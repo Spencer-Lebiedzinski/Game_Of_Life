@@ -1,0 +1,223 @@
+================================================================================
+                        TEAM RULES & DEVELOPMENT GUIDE
+                         Game of Life Hackathon Project
+================================================================================
+
+READ THIS BEFORE YOU WRITE A SINGLE LINE OF CODE.
+Share this with your Claude session so it understands the project context.
+
+--------------------------------------------------------------------------------
+TECH STACK
+--------------------------------------------------------------------------------
+
+Frontend  : Next.js / React (TypeScript)
+Backend   : Python (FastAPI)
+Database  : Supabase (auth + database)
+AI        : Claude API (Anthropic)
+Repo      : [INSERT REPO URL]
+
+--------------------------------------------------------------------------------
+FILE OWNERSHIP — DO NOT TOUCH SOMEONE ELSE'S FILES
+--------------------------------------------------------------------------------
+
+If you need to edit a file that belongs to someone else, message them first
+and let THEM make the change.
+
+  AI / SUGGESTIONS (Person 1)
+    - backend/services/claude_service.py
+    - backend/routes/suggestions.py
+    - backend/routes/onboarding.py
+    - frontend/components/OnboardingForm.tsx
+    - frontend/components/SuggestionCard.tsx
+    - frontend/app/(protected)/onboarding/page.tsx
+    - frontend/app/(protected)/suggestions/page.tsx
+
+  CANVAS INTEGRATION (Person 2)
+    - backend/services/canvas_service.py
+    - backend/routes/canvas.py
+    - frontend/components/CanvasSync.tsx
+
+  FRONTEND / DASHBOARD (Person 3)
+    - frontend/app/(protected)/dashboard/page.tsx
+    - frontend/components/ui/  (all shared UI components)
+    - frontend/lib/api.ts
+
+  CHECKIN FLOW (Person 4)
+    - backend/routes/checkin.py
+    - frontend/components/CheckinForm.tsx
+    - frontend/app/(protected)/checkin/page.tsx
+
+  BACKEND / DATABASE (Person 5)
+    - backend/db/database.py
+    - backend/main.py
+    - backend/models/schemas.py
+    - frontend/lib/supabase.ts
+    - frontend/middleware.ts
+    - Supabase project setup
+
+--------------------------------------------------------------------------------
+SHARED FILES — EXTRA CARE REQUIRED
+--------------------------------------------------------------------------------
+
+These files are touched by multiple people. Always announce in the group chat
+before editing them.
+
+  - backend/models/schemas.py     (agree on changes before editing)
+  - frontend/types/index.ts       (agree on changes before editing)
+  - backend/main.py               (DB lead owns, ask them to add your routes)
+  - .env.example                  (only add keys, never delete existing ones)
+
+--------------------------------------------------------------------------------
+BRANCH RULES
+--------------------------------------------------------------------------------
+
+NEVER commit directly to main.
+Everyone works on their own branch at all times.
+
+  Branches:
+    feat/ai-suggestions         (Person 1)
+    feat/canvas-integration     (Person 2)
+    feat/dashboard-ui           (Person 3)
+    feat/checkin-flow           (Person 4)
+    feat/auth-setup             (Person 5)
+
+  To create your branch:
+    git checkout -b feat/your-feature-name
+
+  To keep your branch up to date:
+    git pull origin main
+    git merge main
+
+  To merge your work when it is FULLY WORKING:
+    git checkout main
+    git pull origin main
+    git merge feat/your-feature-name
+    git push origin main
+
+  ANNOUNCE IN THE GROUP CHAT every time you merge to main.
+  Everyone else should immediately run: git pull origin main
+
+--------------------------------------------------------------------------------
+DATA SCHEMA — THE CONTRACT EVERYONE BUILDS AROUND
+--------------------------------------------------------------------------------
+
+These are the shared data shapes. Do not change them without telling the team.
+
+  UserProfile:
+    user_id, name, sleep_hours, stress_level (1-5), exercise_freq,
+    study_style, study_time, goals[], onboarding_complete
+
+  CanvasCourse:
+    user_id, name, current_grade, trend (improving/declining/stable),
+    missing_assignments, next_due, upcoming_exams[]
+
+  CheckinEntry:
+    user_id, timestamp, studied (bool), study_hours,
+    mood (1-5), exercised (bool), sleep_hours, notes
+
+  Suggestion:
+    user_id, domain (grades/health/life), action, xp,
+    difficulty (easy/medium/hard), reason, completed (bool)
+
+--------------------------------------------------------------------------------
+ENVIRONMENT VARIABLES
+--------------------------------------------------------------------------------
+
+Copy .env.example to .env and fill in the values.
+NEVER commit your .env file.
+NEVER share secret keys in the group chat — use a private message.
+
+  Required keys:
+    NEXT_PUBLIC_SUPABASE_URL
+    NEXT_PUBLIC_SUPABASE_ANON_KEY
+    SUPABASE_SERVICE_ROLE_KEY       (backend only, never expose to frontend)
+    ANTHROPIC_API_KEY               (backend only, never expose to frontend)
+    CANVAS_API_TOKEN                (backend only)
+
+--------------------------------------------------------------------------------
+ARCHITECTURE — HOW THE APP WORKS
+--------------------------------------------------------------------------------
+
+  1. User signs up / logs in via Supabase Auth
+  2. User completes onboarding form → saved to user_profiles table
+  3. Canvas integration pulls course data → saved to canvas_courses table
+  4. User submits daily checkin → saved to checkin_logs table
+  5. User requests suggestions → Python backend fetches profile + canvas +
+     checkins → passes to Claude API → saves and returns structured JSON
+  6. Frontend displays suggestions as game cards with XP and difficulty
+
+  Frontend reads from Supabase directly for simple data (profile, history).
+  Frontend always goes through the Python backend for anything involving Claude.
+
+--------------------------------------------------------------------------------
+API ENDPOINT REFERENCE
+--------------------------------------------------------------------------------
+
+  POST /onboarding        Save user profile after onboarding form
+  POST /checkin           Submit a daily checkin entry
+  POST /suggestions       Generate AI suggestions for the user
+  POST /canvas/sync       Sync latest Canvas data for the user
+
+  All endpoints require a Bearer token in the Authorization header.
+  The backend validates the token and extracts user_id automatically.
+
+--------------------------------------------------------------------------------
+INSTRUCTIONS FOR YOUR CLAUDE SESSION
+--------------------------------------------------------------------------------
+
+When starting a Claude conversation to help you code, paste this at the top:
+
+  "I am working on a hackathon project called Game of Life. It helps students
+  improve grades, health, and life balance. The stack is Next.js + Python
+  FastAPI + Supabase + Claude API. Here is our team rules file: [paste this doc]
+  I am responsible for [your area]. Please help me build within this structure
+  and do not suggest changes to files owned by other teammates."
+
+This gives Claude full context so suggestions stay consistent with the project.
+
+--------------------------------------------------------------------------------
+TIMELINE
+--------------------------------------------------------------------------------
+
+  Hours  1-2  : Setup, repo clone, Supabase live, .env shared, schema locked
+  Hours  2-5  : Each person builds their core feature in their branch
+  Hours  5-10 : Main features working, start integrating with each other
+  Hours 10-16 : Integration testing, connect frontend to backend
+  Hours 16-20 : Polish, edge cases, explainability layer
+  Hours 20-24 : Demo prep only, no new features
+
+  After hour 10 — NO NEW FEATURES. Polish what exists.
+
+--------------------------------------------------------------------------------
+IF YOU GET A MERGE CONFLICT
+--------------------------------------------------------------------------------
+
+  1. Don't panic
+  2. Find the other person whose code is conflicting
+  3. Look at the diff together
+  4. Manually pick which lines to keep
+  5. It should never take more than 5-10 minutes if everyone owns their files
+
+--------------------------------------------------------------------------------
+QUICK SETUP
+--------------------------------------------------------------------------------
+
+  git clone [REPO URL]
+  cd [REPO NAME]
+  cp .env.example .env
+  # fill in your .env values
+  git checkout -b feat/your-feature-name
+
+  Frontend:
+    cd frontend
+    npm install
+    npm run dev
+
+  Backend:
+    cd backend
+    pip install -r requirements.txt
+    uvicorn main:app --reload
+
+================================================================================
+                        GOOD LUCK. BUILD SOMETHING GREAT.
+================================================================================ 
