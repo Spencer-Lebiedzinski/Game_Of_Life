@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Bell, Mic, Zap, Flame } from 'lucide-react';
+import { Bell, Mic, Zap, Flame, LogOut } from 'lucide-react';
+import { useAuth0 } from '@auth0/auth0-react';
 import { user, notifications } from '../data/mockData';
 
 export default function Header({ activeTab, setActiveTab, userName, theme }) {
+  const { logout, user: auth0User } = useAuth0();
   const [showNotifs, setShowNotifs] = useState(false);
   const [showMicToast, setShowMicToast] = useState(false);
   const xpPercent = Math.round((user.xp / user.xpToNext) * 100);
@@ -107,12 +109,21 @@ export default function Header({ activeTab, setActiveTab, userName, theme }) {
             {/* Avatar + name */}
             <div className="flex items-center gap-1.5">
               <img
-                src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${displayName}`}
+                src={auth0User?.picture || `https://api.dicebear.com/7.x/adventurer/svg?seed=${displayName}`}
                 alt={displayName}
                 className="w-7 h-7 rounded-full bg-gray-600"
               />
               <span className="text-xs text-gray-300 hidden sm:inline">{displayName}</span>
             </div>
+
+            {/* Logout */}
+            <button
+              onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
+              className="p-1.5 rounded-full hover:bg-gray-700 transition-colors"
+              title="Sign out"
+            >
+              <LogOut size={15} className="text-gray-400" />
+            </button>
           </div>
         </div>
       </div>
