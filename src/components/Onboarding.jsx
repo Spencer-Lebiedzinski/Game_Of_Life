@@ -10,61 +10,182 @@ const GOAL_OPTIONS = [
   { id: 'sleep',   label: 'Sleep Better',     icon: '😴', desc: 'Track & improve sleep quality' },
 ];
 
+// 3 progressive questions per goal — each answer sharpens Gemini's context
 const CLARIFY_QUESTIONS = {
-  school: {
-    question: "What's your biggest academic challenge?",
-    options: [
-      { id: 'assignments', icon: '📝', label: 'Staying on top of assignments', desc: 'Deadlines keep sneaking up on me' },
-      { id: 'grades',      icon: '📈', label: 'Improving my grades',           desc: 'I know I can do better' },
-      { id: 'time',        icon: '⏰', label: 'Time management',                desc: 'Too much to do, too little time' },
-      { id: 'anxiety',     icon: '😰', label: 'Test anxiety',                  desc: 'I freeze up during exams' },
-    ],
-  },
-  fitness: {
-    question: "What's your main fitness goal?",
-    options: [
-      { id: 'weight',     icon: '⚖️', label: 'Lose weight',      desc: 'Feel better in my body' },
-      { id: 'strength',   icon: '🏋️', label: 'Build strength',    desc: 'Get stronger over time' },
-      { id: 'energy',     icon: '⚡', label: 'More energy',       desc: 'Stop feeling drained' },
-      { id: 'consistent', icon: '🔄', label: 'Stay consistent',   desc: 'Actually stick to it this time' },
-    ],
-  },
-  mindset: {
-    question: "What do you want to work on mentally?",
-    options: [
-      { id: 'stress',      icon: '😤', label: 'Reduce stress',           desc: 'Feel less overwhelmed' },
-      { id: 'sleep',       icon: '😴', label: 'Better sleep',            desc: 'Wake up actually rested' },
-      { id: 'journal',     icon: '✍️', label: 'Journaling & reflection', desc: 'Process my thoughts' },
-      { id: 'motivation',  icon: '🔥', label: 'Stay motivated',          desc: 'Stop losing momentum' },
-    ],
-  },
-  social: {
-    question: "What matters most to you socially?",
-    options: [
-      { id: 'meet',    icon: '👋', label: 'Meet new people',          desc: 'Expand my circle' },
-      { id: 'friends', icon: '❤️', label: 'Strengthen friendships',   desc: 'Be a better friend' },
-      { id: 'phone',   icon: '📵', label: 'Less phone, more people',  desc: 'Be present in real life' },
-      { id: 'goals',   icon: '🎯', label: 'Set social goals',         desc: 'Be intentional about connections' },
-    ],
-  },
-  finance: {
-    question: "What's your biggest money challenge?",
-    options: [
-      { id: 'track',      icon: '📊', label: 'Track my spending',      desc: 'Know where it all goes' },
-      { id: 'save',       icon: '🏦', label: 'Save more money',         desc: 'Build a financial cushion' },
-      { id: 'debt',       icon: '💳', label: 'Get out of debt',         desc: 'Stop the cycle' },
-      { id: 'understand', icon: '🤔', label: 'Understand my finances',  desc: 'Feel in control of my money' },
-    ],
-  },
-  sleep: {
-    question: "What's your sleep struggle?",
-    options: [
-      { id: 'schedule', icon: '📅', label: 'Staying on a schedule', desc: 'My bedtime is all over the place' },
-      { id: 'falling',  icon: '🌙', label: 'Falling asleep',        desc: "My mind won't quiet down" },
-      { id: 'hours',    icon: '⏱️', label: 'Not enough hours',      desc: 'I never get enough sleep' },
-      { id: 'quality',  icon: '💤', label: 'Sleep quality',         desc: 'I wake up exhausted anyway' },
-    ],
-  },
+  school: [
+    {
+      question: "What's your biggest academic challenge?",
+      options: [
+        { id: 'assignments', icon: '📝', label: 'Staying on top of assignments', desc: 'Deadlines keep sneaking up on me' },
+        { id: 'grades',      icon: '📈', label: 'Improving my grades',           desc: 'I know I can do better' },
+        { id: 'time',        icon: '⏰', label: 'Time management',                desc: 'Too much to do, too little time' },
+        { id: 'anxiety',     icon: '😰', label: 'Test anxiety',                  desc: 'I freeze up during exams' },
+      ],
+    },
+    {
+      question: 'How do you usually study?',
+      options: [
+        { id: 'alone',     icon: '🎧', label: 'Alone with music or noise', desc: 'Headphones in, world out' },
+        { id: 'groups',    icon: '👥', label: 'Study groups',              desc: 'Better with other people' },
+        { id: 'silent',    icon: '📖', label: 'Total silence',             desc: 'Library or quiet room' },
+        { id: 'scattered', icon: '🔀', label: 'No real method',            desc: 'Wherever I happen to be' },
+      ],
+    },
+    {
+      question: 'How far ahead do you usually plan?',
+      options: [
+        { id: 'week',     icon: '📅', label: 'A week ahead',   desc: 'I stay ahead of deadlines' },
+        { id: 'day',      icon: '🌅', label: 'Day by day',     desc: 'I plan each morning' },
+        { id: 'last-min', icon: '🚨', label: 'Last minute',    desc: 'I work best under pressure' },
+        { id: 'reactive', icon: '🤷', label: "I don't plan",   desc: 'Just react to what comes up' },
+      ],
+    },
+  ],
+  fitness: [
+    {
+      question: "What's your main fitness goal?",
+      options: [
+        { id: 'weight',     icon: '⚖️', label: 'Lose weight',       desc: 'Feel better in my body' },
+        { id: 'strength',   icon: '🏋️', label: 'Build strength',     desc: 'Get stronger over time' },
+        { id: 'energy',     icon: '⚡', label: 'More energy',        desc: 'Stop feeling drained' },
+        { id: 'consistent', icon: '🔄', label: 'Stay consistent',    desc: 'Actually stick to it this time' },
+      ],
+    },
+    {
+      question: 'How often do you exercise right now?',
+      options: [
+        { id: 'never',  icon: '🛋️', label: 'Barely ever',   desc: 'Starting from zero' },
+        { id: '1-2x',   icon: '🚶', label: '1–2x a week',   desc: 'Just getting started' },
+        { id: '3-4x',   icon: '🏃', label: '3–4x a week',   desc: 'Pretty active' },
+        { id: 'daily',  icon: '🔥', label: 'Almost daily',  desc: 'Already consistent' },
+      ],
+    },
+    {
+      question: 'What gets in the way most?',
+      options: [
+        { id: 'time',       icon: '⏰', label: 'Not enough time',           desc: "Too busy to work out" },
+        { id: 'motivation', icon: '😴', label: 'Lack of motivation',        desc: "I know I should, but I don't" },
+        { id: 'access',     icon: '📍', label: 'No gym or equipment',       desc: 'Location or gear issues' },
+        { id: 'knowledge',  icon: '🤔', label: "Don't know where to start", desc: "Unsure what to do" },
+      ],
+    },
+  ],
+  mindset: [
+    {
+      question: 'What do you want to work on mentally?',
+      options: [
+        { id: 'stress',      icon: '😤', label: 'Reduce stress',           desc: 'Feel less overwhelmed' },
+        { id: 'sleep',       icon: '😴', label: 'Better sleep',            desc: 'Wake up actually rested' },
+        { id: 'journal',     icon: '✍️', label: 'Journaling & reflection', desc: 'Process my thoughts' },
+        { id: 'motivation',  icon: '🔥', label: 'Stay motivated',          desc: 'Stop losing momentum' },
+      ],
+    },
+    {
+      question: 'How do you usually handle stress?',
+      options: [
+        { id: 'exercise', icon: '🏃', label: 'Exercise or walk',      desc: 'Move it out of my body' },
+        { id: 'talk',     icon: '💬', label: 'Talk to someone',        desc: 'Process it out loud' },
+        { id: 'media',    icon: '📱', label: 'Phone, TV, or gaming',   desc: 'Distract myself' },
+        { id: 'nothing',  icon: '🌀', label: 'I just sit with it',     desc: "No real strategy yet" },
+      ],
+    },
+    {
+      question: 'How often do you feel overwhelmed?',
+      options: [
+        { id: 'rarely',    icon: '😊', label: 'Rarely',         desc: 'Usually feel in control' },
+        { id: 'sometimes', icon: '😐', label: 'Sometimes',      desc: 'Comes and goes' },
+        { id: 'often',     icon: '😟', label: 'Pretty often',   desc: 'Hard to keep up' },
+        { id: 'always',    icon: '😵', label: 'Almost always',  desc: 'Constantly overwhelmed' },
+      ],
+    },
+  ],
+  social: [
+    {
+      question: 'What matters most to you socially?',
+      options: [
+        { id: 'meet',    icon: '👋', label: 'Meet new people',          desc: 'Expand my circle' },
+        { id: 'friends', icon: '❤️', label: 'Strengthen friendships',   desc: 'Be a better friend' },
+        { id: 'phone',   icon: '📵', label: 'Less phone, more people',  desc: 'Be present in real life' },
+        { id: 'goals',   icon: '🎯', label: 'Set social goals',         desc: 'Be intentional about connections' },
+      ],
+    },
+    {
+      question: 'How would you describe your social life right now?',
+      options: [
+        { id: 'active',   icon: '🎉', label: 'Pretty active',       desc: 'I see people regularly' },
+        { id: 'small',    icon: '👫', label: 'Small tight circle',   desc: 'Few but solid friendships' },
+        { id: 'distant',  icon: '🌧️', label: 'Drifted from friends', desc: 'Used to be more social' },
+        { id: 'isolated', icon: '🏠', label: 'Mostly isolated',      desc: 'I want more connection' },
+      ],
+    },
+    {
+      question: "What's your biggest social barrier?",
+      options: [
+        { id: 'anxiety',    icon: '😬', label: 'Social anxiety',          desc: 'I overthink interactions' },
+        { id: 'time',       icon: '⏰', label: 'No time',                  desc: "I'm too busy" },
+        { id: 'confidence', icon: '🪞', label: 'Confidence',               desc: "I don't know how to connect" },
+        { id: 'location',   icon: '📍', label: 'Hard to meet people here', desc: 'Environment is the barrier' },
+      ],
+    },
+  ],
+  finance: [
+    {
+      question: "What's your biggest money challenge?",
+      options: [
+        { id: 'track',      icon: '📊', label: 'Track my spending',     desc: 'Know where it all goes' },
+        { id: 'save',       icon: '🏦', label: 'Save more money',        desc: 'Build a financial cushion' },
+        { id: 'debt',       icon: '💳', label: 'Get out of debt',        desc: 'Stop the cycle' },
+        { id: 'understand', icon: '🤔', label: 'Understand my finances', desc: 'Feel in control of my money' },
+      ],
+    },
+    {
+      question: 'Do you currently have a budget?',
+      options: [
+        { id: 'yes-follow', icon: '✅', label: 'Yes, and I follow it',  desc: 'Pretty disciplined' },
+        { id: 'yes-ignore', icon: '📋', label: 'Yes, but I ignore it',  desc: 'Have one, just forget it' },
+        { id: 'thinking',   icon: '💭', label: 'Thinking about it',     desc: 'Want to start one' },
+        { id: 'no',         icon: '❌', label: 'No budget at all',       desc: 'Flying blind' },
+      ],
+    },
+    {
+      question: "What's your relationship with money right now?",
+      options: [
+        { id: 'in-control', icon: '😌', label: 'Mostly in control',          desc: 'Could be better, but okay' },
+        { id: 'stressed',   icon: '😰', label: 'Stressed about it',           desc: 'Worried regularly' },
+        { id: 'avoidant',   icon: '🙈', label: 'I avoid thinking about it',   desc: "It's overwhelming" },
+        { id: 'clueless',   icon: '🤷', label: 'No idea where I stand',       desc: "I genuinely don't know" },
+      ],
+    },
+  ],
+  sleep: [
+    {
+      question: "What's your sleep struggle?",
+      options: [
+        { id: 'schedule', icon: '📅', label: 'Staying on a schedule', desc: 'My bedtime is all over the place' },
+        { id: 'falling',  icon: '🌙', label: 'Falling asleep',        desc: "My mind won't quiet down" },
+        { id: 'hours',    icon: '⏱️', label: 'Not enough hours',      desc: 'I never get enough sleep' },
+        { id: 'quality',  icon: '💤', label: 'Sleep quality',         desc: 'I wake up exhausted anyway' },
+      ],
+    },
+    {
+      question: 'What time do you usually go to bed?',
+      options: [
+        { id: 'before-10', icon: '🌙', label: 'Before 10pm',            desc: 'Early bird' },
+        { id: '10-12',     icon: '🕙', label: '10pm – midnight',         desc: 'Normal range' },
+        { id: '12-2',      icon: '🕛', label: 'Midnight – 2am',          desc: 'Night owl' },
+        { id: 'after-2',   icon: '☀️', label: 'After 2am / no pattern',  desc: 'Very inconsistent' },
+      ],
+    },
+    {
+      question: 'What disrupts your sleep most?',
+      options: [
+        { id: 'phone',    icon: '📱', label: 'Phone before bed',    desc: 'Scrolling keeps me up' },
+        { id: 'stress',   icon: '😤', label: 'Racing thoughts',     desc: "Can't stop thinking" },
+        { id: 'caffeine', icon: '☕', label: 'Caffeine or food',    desc: 'Late coffee or late snacks' },
+        { id: 'env',      icon: '🔊', label: 'Environment',         desc: 'Noise, light, or temperature' },
+      ],
+    },
+  ],
 };
 
 const THEMES = [
@@ -87,19 +208,24 @@ export default function Onboarding({ onComplete, userId = 'frontend-user' }) {
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [selectedGoals, setSelectedGoals] = useState([]);
-  const [goalDetails, setGoalDetails] = useState({});   // { school: 'assignments', fitness: 'weight', ... }
-  const [clarifyIndex, setClarifyIndex] = useState(0);  // which goal we're clarifying
+  // goalDetails: { school: ['assignments', 'alone', 'last-min'], fitness: [...], ... }
+  const [goalDetails, setGoalDetails] = useState({});
+  const [clarifyGoalIdx, setClarifyGoalIdx] = useState(0);
+  const [clarifyQIdx, setClarifyQIdx] = useState(0);
   const [selectedTheme, setSelectedTheme] = useState('mint');
 
   const stepKey = STEPS[step];
   const theme = THEMES.find((t) => t.id === selectedTheme) || THEMES[0];
   const isDark = theme.dark;
 
-  // Goals that actually have a clarifying question
-  const goalsToclarify = selectedGoals.filter((g) => CLARIFY_QUESTIONS[g]);
-  const currentClarifyGoal = goalsToclarify[clarifyIndex];
-  const currentQuestion = currentClarifyGoal ? CLARIFY_QUESTIONS[currentClarifyGoal] : null;
-  const currentAnswer = goalDetails[currentClarifyGoal];
+  const goalsToClarify = selectedGoals.filter((g) => CLARIFY_QUESTIONS[g]);
+  const currentGoal = goalsToClarify[clarifyGoalIdx];
+  const currentQuestions = currentGoal ? CLARIFY_QUESTIONS[currentGoal] : [];
+  const currentQ = currentQuestions[clarifyQIdx];
+  const currentAnswer = goalDetails[currentGoal]?.[clarifyQIdx];
+
+  const totalClarifySteps = goalsToClarify.length * 3;
+  const doneClarifySteps = clarifyGoalIdx * 3 + clarifyQIdx;
 
   const toggleGoal = (id) => {
     setSelectedGoals((prev) =>
@@ -107,16 +233,23 @@ export default function Onboarding({ onComplete, userId = 'frontend-user' }) {
     );
   };
 
-  const selectClarifyAnswer = (answerId) => {
-    setGoalDetails((prev) => ({ ...prev, [currentClarifyGoal]: answerId }));
+  const selectAnswer = (answerId) => {
+    setGoalDetails((prev) => {
+      const arr = [...(prev[currentGoal] || [])];
+      arr[clarifyQIdx] = answerId;
+      return { ...prev, [currentGoal]: arr };
+    });
   };
 
   const next = () => {
     if (stepKey === 'clarify') {
-      if (clarifyIndex < goalsToclarify.length - 1) {
-        setClarifyIndex((i) => i + 1); // advance to next goal's question
+      if (clarifyQIdx < currentQuestions.length - 1) {
+        setClarifyQIdx((q) => q + 1);
+      } else if (clarifyGoalIdx < goalsToClarify.length - 1) {
+        setClarifyGoalIdx((g) => g + 1);
+        setClarifyQIdx(0);
       } else {
-        setStep((s) => s + 1); // all questions answered, move to theme
+        setStep((s) => s + 1);
       }
       return;
     }
@@ -125,10 +258,15 @@ export default function Onboarding({ onComplete, userId = 'frontend-user' }) {
 
   const back = () => {
     if (stepKey === 'clarify') {
-      if (clarifyIndex > 0) {
-        setClarifyIndex((i) => i - 1);
+      if (clarifyQIdx > 0) {
+        setClarifyQIdx((q) => q - 1);
+      } else if (clarifyGoalIdx > 0) {
+        const prevGoal = goalsToClarify[clarifyGoalIdx - 1];
+        const prevQCount = CLARIFY_QUESTIONS[prevGoal]?.length || 3;
+        setClarifyGoalIdx((g) => g - 1);
+        setClarifyQIdx(prevQCount - 1);
       } else {
-        setStep((s) => s - 1); // back to goals
+        setStep((s) => s - 1);
       }
       return;
     }
@@ -142,13 +280,7 @@ export default function Onboarding({ onComplete, userId = 'frontend-user' }) {
     (stepKey === 'clarify' && !!currentAnswer) ||
     stepKey === 'theme';
 
-  // Skip clarify step entirely if no goals selected (shouldn't happen but safety)
-  const effectiveStepKey = stepKey === 'clarify' && goalsToclarify.length === 0 ? 'theme' : stepKey;
-
-  // Progress dots — clarify counts as sub-steps within one dot
-  const clarifyProgress = goalsToclarify.length > 0
-    ? (clarifyIndex + 1) / goalsToclarify.length
-    : 1;
+  const effectiveStepKey = stepKey === 'clarify' && goalsToClarify.length === 0 ? 'theme' : stepKey;
 
   const handleFinish = async () => {
     const playerName = name || 'Player';
@@ -168,7 +300,8 @@ export default function Onboarding({ onComplete, userId = 'frontend-user' }) {
         social_activity: selectedGoals.includes('social') ? 2 : 3,
         goals: selectedGoals.map((g) => GOAL_TO_BACKEND[g] || g).slice(0, 3),
         vaping_drinking: false,
-        academic_struggle: goalDetails.school || null,
+        academic_struggle: goalDetails.school?.[0] || null,
+        goal_details: goalDetails,
       }),
     }).catch(() => {});
 
@@ -271,38 +404,51 @@ export default function Onboarding({ onComplete, userId = 'frontend-user' }) {
           </div>
         )}
 
-        {/* CLARIFY */}
-        {effectiveStepKey === 'clarify' && currentQuestion && (
+        {/* CLARIFY — 3 questions per goal */}
+        {effectiveStepKey === 'clarify' && currentQ && (
           <div>
-            {/* Sub-progress */}
-            <div className="flex items-center justify-between mb-6">
-              <span className="text-xs text-gray-500">
-                Question {clarifyIndex + 1} of {goalsToclarify.length}
+            {/* Overall clarify progress */}
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                <span style={{ color: theme.accent }}>{GOAL_OPTIONS.find(g => g.id === currentGoal)?.icon}</span>
+                {GOAL_OPTIONS.find(g => g.id === currentGoal)?.label}
               </span>
-              <div className="flex gap-1">
-                {goalsToclarify.map((g, i) => (
-                  <div
-                    key={g}
-                    className="h-1 w-8 rounded-full transition-all"
-                    style={{ backgroundColor: i <= clarifyIndex ? theme.accent : 'rgba(255,255,255,0.2)' }}
-                  />
-                ))}
-              </div>
+              <span className="text-xs text-gray-500">
+                {doneClarifySteps + 1} of {totalClarifySteps}
+              </span>
+            </div>
+
+            {/* Progress bar */}
+            <div className="h-1 w-full bg-white/10 rounded-full mb-6 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{ width: `${((doneClarifySteps) / totalClarifySteps) * 100}%`, backgroundColor: theme.accent }}
+              />
+            </div>
+
+            {/* Question dots within current goal */}
+            <div className="flex gap-1.5 mb-6">
+              {currentQuestions.map((_, i) => (
+                <div
+                  key={i}
+                  className="h-1 flex-1 rounded-full transition-all duration-300"
+                  style={{ backgroundColor: i <= clarifyQIdx ? theme.accent : 'rgba(255,255,255,0.15)' }}
+                />
+              ))}
             </div>
 
             <div className="text-center mb-6">
-              <div className="text-5xl mb-3">{GOAL_OPTIONS.find(g => g.id === currentClarifyGoal)?.icon}</div>
-              <h2 className="text-2xl font-bold mb-1">{currentQuestion.question}</h2>
-              <p className="text-gray-400 text-sm">This helps us personalize your quests.</p>
+              <h2 className="text-2xl font-bold mb-1">{currentQ.question}</h2>
+              <p className="text-gray-400 text-sm">This helps us personalize your daily quests.</p>
             </div>
 
             <div className="flex flex-col gap-3">
-              {currentQuestion.options.map((opt) => {
+              {currentQ.options.map((opt) => {
                 const selected = currentAnswer === opt.id;
                 return (
                   <button
                     key={opt.id}
-                    onClick={() => selectClarifyAnswer(opt.id)}
+                    onClick={() => selectAnswer(opt.id)}
                     className={`flex items-center gap-4 p-4 rounded-2xl text-left transition-all border-2 ${
                       selected ? 'bg-white/20' : 'border-white/10 bg-white/5 hover:bg-white/10'
                     }`}
@@ -409,8 +555,11 @@ export default function Onboarding({ onComplete, userId = 'frontend-user' }) {
                 color: isDark ? 'white' : '#111827',
               }}
             >
-              {effectiveStepKey === 'clarify' && clarifyIndex < goalsToclarify.length - 1 ? 'Next Question' :
-               effectiveStepKey === 'theme' ? 'Almost there' : 'Continue'}
+              {effectiveStepKey === 'clarify' && (clarifyQIdx < currentQuestions.length - 1 || clarifyGoalIdx < goalsToClarify.length - 1)
+                ? 'Next'
+                : effectiveStepKey === 'theme'
+                ? 'Almost there'
+                : 'Continue'}
               <ChevronRight size={16} />
             </button>
           </div>
