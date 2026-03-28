@@ -91,9 +91,35 @@ export default function Onboarding({ onComplete }) {
     if (step > 0) setStep((s) => s - 1);
   };
 
-  const handleFinish = () => {
+  const GOAL_TO_BACKEND = {
+    school: 'better_grades', fitness: 'lose_weight', mindset: 'reduce_stress',
+    social: 'be_more_social', finance: 'save_money', sleep: 'sleep_better',
+  };
+
+  const handleFinish = async () => {
     const theme = THEMES.find((t) => t.id === selectedTheme) || THEMES[0];
-    onComplete({ name: name || 'Player', goals: selectedGoals, theme });
+    const playerName = name || 'Player';
+
+    // Save profile to backend (fire-and-forget — don't block the UI)
+    fetch('http://localhost:8000/api/onboarding', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: 'frontend-user',
+        name: playerName,
+        eating_quality: 3,
+        sleep_hours: 7,
+        exercise_freq: 3,
+        stress_level: 3,
+        spending_awareness: 3,
+        screen_time_struggle: 'sometimes',
+        social_activity: 3,
+        goals: selectedGoals.map((g) => GOAL_TO_BACKEND[g] || g).slice(0, 3),
+        vaping_drinking: false,
+      }),
+    }).catch(() => {/* backend not running — app still works */});
+
+    onComplete({ name: playerName, goals: selectedGoals, theme });
   };
 
   const canNext =

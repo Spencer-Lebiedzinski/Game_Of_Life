@@ -9,6 +9,7 @@ import AnalyticsTab from './components/tabs/AnalyticsTab';
 import FinanceTab from './components/tabs/FinanceTab';
 import FloatingActionButton from './components/FloatingActionButton';
 import Onboarding from './components/Onboarding';
+import SuggestionsTab from './components/tabs/SuggestionsTab';
 import { weekTasks } from './data/mockData';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -80,6 +81,8 @@ export default function App() {
         return <AnalyticsTab />;
       case 'finance':
         return <FinanceTab />;
+      case 'suggestions':
+        return <SuggestionsTab userName={profile.name} theme={profile.theme} goals={profile.goals} />;
       default:
         return null;
     }

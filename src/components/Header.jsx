@@ -18,6 +18,7 @@ export default function Header({ activeTab, setActiveTab, userName, theme }) {
     { id: 'social', label: 'Social' },
     { id: 'analytics', label: 'Analytics' },
     { id: 'finance', label: 'Finance' },
+    { id: 'suggestions', label: 'Quests ✨' },
   ];
 
   const handleMic = () => {
