@@ -3,7 +3,7 @@ import { Bell, Mic, Zap, Flame, LogOut } from 'lucide-react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { user, notifications } from '../data/mockData';
 
-export default function Header({ activeTab, setActiveTab, userName, theme }) {
+export default function Header({ activeTab, setActiveTab, userName, theme, goals = [] }) {
   const { logout, user: auth0User } = useAuth0();
   const [showNotifs, setShowNotifs] = useState(false);
   const [showMicToast, setShowMicToast] = useState(false);
@@ -12,16 +12,20 @@ export default function Header({ activeTab, setActiveTab, userName, theme }) {
   const accent = theme?.accent || '#2DD4BF';
   const primary = theme?.primary || '#6EE7B7';
 
-  const tabs = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'school', label: 'School' },
-    { id: 'fitness', label: 'Fitness' },
-    { id: 'mindset', label: 'Mindset' },
-    { id: 'social', label: 'Social' },
-    { id: 'analytics', label: 'Analytics' },
-    { id: 'finance', label: 'Finance' },
-    { id: 'suggestions', label: 'Quests ✨' },
+  const allTabs = [
+    { id: 'dashboard', label: 'Dashboard', alwaysShow: true },
+    { id: 'school', label: 'School', goal: 'school' },
+    { id: 'fitness', label: 'Fitness', goal: 'fitness' },
+    { id: 'mindset', label: 'Mindset', goal: 'mindset' },
+    { id: 'social', label: 'Social', goal: 'social' },
+    { id: 'analytics', label: 'Analytics', alwaysShow: true },
+    { id: 'finance', label: 'Finance', goal: 'finance' },
+    { id: 'suggestions', label: 'Quests ✨', alwaysShow: true },
   ];
+
+  const tabs = goals.length === 0
+    ? allTabs
+    : allTabs.filter((t) => t.alwaysShow || goals.includes(t.goal));
 
   const handleMic = () => {
     setShowMicToast(true);

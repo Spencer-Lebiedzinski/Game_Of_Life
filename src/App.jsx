@@ -113,6 +113,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         userName={profile.name}
         theme={profile.theme}
+        goals={profile.goals}
       />
       <main className="pb-24">
         {renderContent()}
