@@ -58,7 +58,7 @@ export default function VoiceCoach({ tasks, userName, theme }) {
   const [script, setScript]     = useState('');
   const [muted, setMuted]       = useState(false);
   const [wordIdx, setWordIdx]   = useState(-1);
-  const [error, setError]       = useState('');
+  const [needsPaid, setNeedsPaid] = useState(false);
 
   const audioRef    = useRef(null);
   const intervalRef = useRef(null);
@@ -89,49 +89,53 @@ export default function VoiceCoach({ tasks, userName, theme }) {
       setLoading(true);
       try {
         const res = await fetch(
-          `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}/stream`,
+          `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`,
           {
             method: 'POST',
             headers: {
               'xi-api-key': ELEVENLABS_KEY,
               'Content-Type': 'application/json',
+              'Accept': 'audio/mpeg',
             },
             body: JSON.stringify({
               text,
-              model_id: 'eleven_turbo_v2',
+              model_id: 'eleven_flash_v2_5',
               voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.3, use_speaker_boost: true },
             }),
           }
         );
 
+        if (res.status === 402 || res.status === 401) {
+          const body = await res.json().catch(() => ({}));
+          const msg  = body?.detail?.message || '';
+          if (msg.includes('library voices') || msg.includes('upgrade')) {
+            setNeedsPaid(true);
+          }
+          throw new Error('plan_required');
+        }
         if (!res.ok) throw new Error(`ElevenLabs ${res.status}`);
 
-        const blob = await res.blob();
-        const url  = URL.createObjectURL(blob);
+        const blob  = await res.blob();
+        const url   = URL.createObjectURL(blob);
         const audio = new Audio(url);
         audio.volume = muted ? 0 : 1;
         audioRef.current = audio;
-
         audio.onended = () => { setPlaying(false); setWordIdx(-1); clearInterval(intervalRef.current); URL.revokeObjectURL(url); };
-        audio.onerror = () => { setPlaying(false); setError('Playback error.'); };
-
+        audio.onerror = () => { setPlaying(false); };
         await audio.play();
         setPlaying(true);
         setLoading(false);
 
-        // Sync word highlights to estimated speech pace
-        const estDuration = text.split(' ').length * 380; // ~380ms/word
+        const estDuration = text.split(' ').length * 380;
         let wi = 0;
         intervalRef.current = setInterval(() => {
           setWordIdx(wi++);
           if (wi >= wordsRef.current.length) clearInterval(intervalRef.current);
         }, estDuration / wordsRef.current.length);
-
         return;
       } catch (e) {
-        console.warn('ElevenLabs error, falling back to browser TTS:', e);
         setLoading(false);
-        setError('ElevenLabs error — using browser voice instead.');
+        if (e.message !== 'plan_required') console.warn('ElevenLabs error:', e);
       }
     }
 
@@ -185,7 +189,7 @@ export default function VoiceCoach({ tasks, userName, theme }) {
               </div>
             </div>
             <p className="text-xs text-gray-400">
-              {ELEVENLABS_KEY ? 'AI voice · Rachel' : 'Browser voice (no key set)'}
+              {ELEVENLABS_KEY && !needsPaid ? 'AI voice · Rachel' : needsPaid ? 'Upgrade to unlock AI voice' : 'Browser voice (no key set)'}
             </p>
           </div>
         </div>
@@ -215,8 +219,16 @@ export default function VoiceCoach({ tasks, userName, theme }) {
         </div>
       )}
 
-      {error && (
-        <p className="text-xs text-yellow-400 mb-2 text-center">{error}</p>
+      {needsPaid && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 mb-3 text-xs text-yellow-300 flex items-start gap-2">
+          <Sparkles size={13} className="shrink-0 mt-0.5 text-yellow-400" />
+          <span>
+            ElevenLabs free tier doesn't allow API voice access.{' '}
+            <a href="https://elevenlabs.io/subscription" target="_blank" rel="noreferrer"
+              className="underline text-yellow-200 hover:text-white">Upgrade to Starter ($5/mo)</a>{' '}
+            to unlock AI voices. Using browser voice for now.
+          </span>
+        </div>
       )}
 
       {/* Play button */}
