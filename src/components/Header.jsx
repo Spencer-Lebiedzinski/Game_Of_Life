@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Mic, Zap, Flame, LogOut } from 'lucide-react';
+import { Bell, Mic, Zap, Flame, LogOut, Settings } from 'lucide-react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { user, notifications } from '../data/mockData';
 
@@ -119,6 +119,19 @@ export default function Header({ activeTab, setActiveTab, userName, theme, goals
               />
               <span className="text-xs text-gray-300 hidden sm:inline">{displayName}</span>
             </div>
+
+            {/* Settings */}
+            <button
+              onClick={() => setActiveTab('settings')}
+              className="p-1.5 rounded-full hover:bg-gray-700 transition-colors"
+              title="Settings"
+            >
+              <Settings
+                size={15}
+                style={{ color: activeTab === 'settings' ? accent : undefined }}
+                className={activeTab === 'settings' ? '' : 'text-gray-400'}
+              />
+            </button>
 
             {/* Logout */}
             <button

@@ -87,3 +87,20 @@ async def get_profile(user_id: str):
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found.")
     return profile
+
+
+class ProfilePatch(BaseModel):
+    goals: Optional[List[str]] = None
+    goal_details: Optional[dict] = None
+    theme: Optional[dict] = None
+    name: Optional[str] = None
+
+
+@router.patch("/profile/{user_id}")
+async def update_profile(user_id: str, patch: ProfilePatch):
+    db = get_db()
+    updates = {k: v for k, v in patch.model_dump().items() if v is not None}
+    if not updates:
+        return {"ok": True}
+    await db.profiles.update_one({"user_id": user_id}, {"$set": updates})
+    return {"ok": True}

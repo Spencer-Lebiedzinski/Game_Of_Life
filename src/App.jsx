@@ -11,6 +11,7 @@ import FinanceTab from './components/tabs/FinanceTab';
 import FloatingActionButton from './components/FloatingActionButton';
 import Onboarding from './components/Onboarding';
 import SuggestionsTab from './components/tabs/SuggestionsTab';
+import SettingsTab from './components/tabs/SettingsTab';
 import LoginScreen from './auth/LoginScreen.jsx';
 import { weekTasks } from './data/mockData';
 
@@ -31,15 +32,22 @@ export default function App() {
   // Real Auth0 user ID, falls back to placeholder if Auth0 not configured
   const userId = user?.sub || 'frontend-user';
 
-  const handleOnboardingComplete = (data) => {
-    setProfile(data);
-    // Apply theme CSS variables
-    const { theme } = data;
+  const applyTheme = (theme) => {
     const root = document.documentElement;
     root.style.setProperty('--color-primary', theme.primary);
     root.style.setProperty('--color-secondary', theme.secondary);
     root.style.setProperty('--color-accent', theme.accent);
     root.style.setProperty('--color-bg', theme.bg);
+  };
+
+  const handleOnboardingComplete = (data) => {
+    setProfile(data);
+    applyTheme(data.theme);
+  };
+
+  const handleProfileUpdate = (updatedProfile) => {
+    setProfile(updatedProfile);
+    if (updatedProfile.theme) applyTheme(updatedProfile.theme);
   };
 
   const handleAdd = (type, name) => {
@@ -101,6 +109,8 @@ export default function App() {
         return <FinanceTab profile={profile} />;
       case 'suggestions':
         return <SuggestionsTab userName={profile.name} theme={profile.theme} goals={profile.goals} userId={userId} />;
+      case 'settings':
+        return <SettingsTab profile={profile} userId={userId} onProfileUpdate={handleProfileUpdate} />;
       default:
         return null;
     }
