@@ -1,0 +1,7 @@
+.DS_Store
+.env
+.venv/
+.venv-1/
+__pycache__/
+*.pyc
+canvas_tokens.db
