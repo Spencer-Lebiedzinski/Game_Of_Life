@@ -63,7 +63,7 @@ Rules:
 - Sound natural and spoken, not written — no bullet points, no markdown
 - Be warm, energetic, and direct. Think coach, not robot.`;
 
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
   const result = await model.generateContent(prompt);
   return result.response.text().trim();
 }
