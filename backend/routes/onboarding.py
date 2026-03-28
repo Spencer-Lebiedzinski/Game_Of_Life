@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from enum import Enum
 from db import get_db
+from services.stats_service import get_or_create_stats
 
 router = APIRouter()
 
@@ -77,6 +78,8 @@ async def submit_onboarding(payload: OnboardingPayload):
     }
 
     await db.profiles.insert_one({**profile})
+    # Create stats entry so user appears on leaderboard immediately
+    await get_or_create_stats(payload.user_id)
     return UserProfile(**profile)
 
 

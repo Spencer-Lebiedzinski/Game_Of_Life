@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChevronRight, ChevronLeft, Check } from 'lucide-react';
 import { GOAL_OPTIONS, CLARIFY_QUESTIONS, THEMES, GOAL_TO_BACKEND } from '../data/goalData';
 
+const STEPS = ['welcome', 'name', 'goals', 'clarify', 'theme', 'done'];
 
 export default function Onboarding({ onComplete, userId = 'frontend-user' }) {
   const [step, setStep] = useState(0);

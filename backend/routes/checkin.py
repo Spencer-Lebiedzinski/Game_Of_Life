@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime, timezone
 from db import get_db
+from services.stats_service import award_xp
 
 router = APIRouter()
 
@@ -51,6 +52,15 @@ async def submit_checkin(payload: CheckinPayload):
         "notes": payload.notes,
     }
     await db.checkins.insert_one({**entry})
+
+    # Award XP for checking in; bonus for exercising or studying
+    xp = 50
+    if payload.exercised:
+        xp += 25
+    if payload.studied:
+        xp += 25
+    await award_xp(payload.user_id, xp, "checkin")
+
     return CheckinEntry(**entry)
 
 

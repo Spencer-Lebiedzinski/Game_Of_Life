@@ -3,7 +3,7 @@ import { Sparkles, RefreshCw } from 'lucide-react';
 import SuggestionCard from '../SuggestionCard';
 
 
-export default function SuggestionsTab({ userName, theme, goals = [], userId = 'frontend-user' }) {
+export default function SuggestionsTab({ userName, theme, goals = [], userId = 'frontend-user', onXpAwarded }) {
   const [suggestions, setSuggestions] = useState([]);
   const [sessionId, setSessionId] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -56,7 +56,9 @@ export default function SuggestionsTab({ userName, theme, goals = [], userId = '
           session_id: sessionId,
           quest_id: completedSuggestion.id,
         }),
-      }).catch(() => {});  // fire and forget — UI already updated
+      })
+        .then(() => { if (onXpAwarded) onXpAwarded(); })
+        .catch(() => {});
     }
   }
 

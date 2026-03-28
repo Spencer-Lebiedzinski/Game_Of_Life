@@ -1,13 +1,19 @@
 import { useState } from 'react';
 import { Bell, Mic, Zap, Flame, LogOut, Settings } from 'lucide-react';
 import { useAuth0 } from '@auth0/auth0-react';
-import { user, notifications } from '../data/mockData';
+import { notifications } from '../data/mockData';
 
-export default function Header({ activeTab, setActiveTab, userName, theme, goals = [] }) {
+export default function Header({ activeTab, setActiveTab, userName, theme, goals = [], userStats }) {
   const { logout, user: auth0User } = useAuth0();
   const [showNotifs, setShowNotifs] = useState(false);
   const [showMicToast, setShowMicToast] = useState(false);
-  const xpPercent = Math.round((user.xp / user.xpToNext) * 100);
+
+  const xp = userStats?.xp ?? 0;
+  const level = userStats?.level ?? 1;
+  const streak = userStats?.streak ?? 0;
+  const xpToNext = userStats?.xp_to_next ?? 300;
+  const badges = userStats?.badges ?? [];
+  const xpPercent = Math.round((xp / xpToNext) * 100);
 
   const accent = theme?.accent || '#2DD4BF';
   const primary = theme?.primary || '#6EE7B7';
@@ -20,7 +26,6 @@ export default function Header({ activeTab, setActiveTab, userName, theme, goals
     { id: 'social', label: 'Social', goal: 'social' },
     { id: 'analytics', label: 'Analytics', alwaysShow: true },
     { id: 'finance', label: 'Finance', goal: 'finance' },
-    { id: 'suggestions', label: 'Quests ✨', alwaysShow: true },
   ];
 
   const tabs = goals.length === 0
@@ -32,7 +37,7 @@ export default function Header({ activeTab, setActiveTab, userName, theme, goals
     setTimeout(() => setShowMicToast(false), 2000);
   };
 
-  const displayName = userName || user.name;
+  const displayName = userName || 'Player';
 
   return (
     <header className="bg-white shadow-sm sticky top-0 z-40">
@@ -43,12 +48,12 @@ export default function Header({ activeTab, setActiveTab, userName, theme, goals
           <div className="flex items-center gap-3 flex-1 max-w-xs">
             <div className="flex items-center gap-1 shrink-0">
               <Zap size={14} className="text-yellow-400" />
-              <span className="text-xs font-semibold text-yellow-400">Lv {user.level}</span>
+              <span className="text-xs font-semibold text-yellow-400">Lv {level}</span>
             </div>
             <div className="flex-1">
               <div className="flex justify-between text-xs text-gray-400 mb-0.5">
-                <span>{user.xp.toLocaleString()} XP</span>
-                <span>{user.xpToNext.toLocaleString()}</span>
+                <span>{xp.toLocaleString()} XP</span>
+                <span>{xpToNext.toLocaleString()}</span>
               </div>
               <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
                 <div
@@ -66,10 +71,10 @@ export default function Header({ activeTab, setActiveTab, userName, theme, goals
           <div className="flex items-center gap-3 shrink-0">
             <div className="flex items-center gap-1">
               <Flame size={16} className="text-orange-400" />
-              <span className="text-orange-400 font-semibold text-sm">{user.streak}</span>
+              <span className="text-orange-400 font-semibold text-sm">{streak}</span>
             </div>
             <div className="hidden sm:flex gap-1">
-              {user.badges.map((badge, i) => (
+              {badges.map((badge, i) => (
                 <span key={i} className="text-sm">{badge}</span>
               ))}
             </div>

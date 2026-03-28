@@ -3,11 +3,10 @@ import TaskList from './TaskList';
 import LifeScore from './LifeScore';
 import VoiceCoach from './VoiceCoach';
 import StudyMode from './StudyMode';
-import { weekTasks } from '../data/mockData';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-export default function Dashboard({ tasks, setTasks, selectedDay, setSelectedDay, userName, theme }) {
+export default function Dashboard({ tasks, setTasks, selectedDay, setSelectedDay, userName, theme, userStats }) {
   const today = new Date();
   const dayOfWeek = today.getDay();
   const todayName = DAYS[dayOfWeek === 0 ? 6 : dayOfWeek - 1];
@@ -19,7 +18,7 @@ export default function Dashboard({ tasks, setTasks, selectedDay, setSelectedDay
   });
 
   const taskCounts = Object.fromEntries(
-    Object.entries(weekTasks).map(([day, t]) => [day, t.length])
+    Object.entries(tasks).map(([day, t]) => [day, t.length])
   );
 
   const dayTasks = tasks[selectedDay] || [];
@@ -104,7 +103,7 @@ export default function Dashboard({ tasks, setTasks, selectedDay, setSelectedDay
 
         {/* Right: Life Score + Voice Coach */}
         <div className="lg:col-span-1 space-y-4">
-          <LifeScore />
+          <LifeScore userStats={userStats} />
           <VoiceCoach tasks={todayTasks} userName={userName} theme={theme} />
         </div>
       </div>

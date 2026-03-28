@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
 from db import get_db
+from services.stats_service import award_xp
 
 router = APIRouter()
 
@@ -42,13 +43,16 @@ async def complete_quest(req: QuestCompleteRequest):
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Quest not found.")
 
-    # Return the XP for this quest
+    # Award XP to user stats
     session = await db.quests_sessions.find_one(
         {"session_id": req.session_id},
         {"_id": 0, "quests": 1}
     )
     quest = next((q for q in session["quests"] if q["id"] == req.quest_id), None)
     xp = quest["xp"] if quest else 0
+    if xp:
+        await award_xp(req.user_id, xp, f"quest_{quest.get('domain', 'unknown')}")
+
     return {"xp_earned": xp, "quest_id": req.quest_id}
 
 
