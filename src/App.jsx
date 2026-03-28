@@ -88,17 +88,17 @@ export default function App() {
           />
         );
       case 'school':
-        return <SchoolTab />;
+        return <SchoolTab profile={profile} />;
       case 'fitness':
-        return <FitnessTab />;
+        return <FitnessTab profile={profile} />;
       case 'mindset':
-        return <MindsetTab />;
+        return <MindsetTab profile={profile} />;
       case 'social':
-        return <SocialTab theme={profile.theme} userName={profile.name} />;
+        return <SocialTab theme={profile.theme} userName={profile.name} profile={profile} />;
       case 'analytics':
         return <AnalyticsTab />;
       case 'finance':
-        return <FinanceTab />;
+        return <FinanceTab profile={profile} />;
       case 'suggestions':
         return <SuggestionsTab userName={profile.name} theme={profile.theme} goals={profile.goals} userId={userId} />;
       default:

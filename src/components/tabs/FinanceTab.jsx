@@ -1,4 +1,42 @@
-export default function FinanceTab() {
+const FINANCE_PLANS = {
+  track: {
+    headline: 'Know Where Every Dollar Goes',
+    steps: ['Write down every purchase today — even $1', 'Categorize last month\'s spending in 4 buckets: needs, wants, savings, debt', 'Set a weekly "money date" to review your numbers'],
+  },
+  save: {
+    headline: 'Build Your Financial Cushion',
+    steps: ['Open a separate savings account — name it your goal', 'Automate a fixed transfer on payday, even $10', 'Find one recurring charge you can cut this week'],
+  },
+  debt: {
+    headline: 'The Debt Elimination Path',
+    steps: ['List all debts: balance, minimum payment, interest rate', 'Pay minimums on all, attack the highest-interest debt first (avalanche)', 'Stop adding new debt — freeze the card if needed'],
+  },
+  understand: {
+    headline: 'Financial Clarity First',
+    steps: ['Calculate your actual monthly take-home income', 'List your fixed costs (rent, subscriptions, loans)', 'What\'s left is your discretionary budget — work from there'],
+  },
+};
+
+const BUDGET_TIPS = {
+  'yes-follow': 'You already budget and follow it — optimize. Raise your savings rate by 1% this month.',
+  'yes-ignore': 'You have a budget — the gap is execution. Put it somewhere you see it daily.',
+  'thinking':   'Start with the 50/30/20 rule: 50% needs, 30% wants, 20% savings.',
+  'no':         'No budget = no control. Start with just tracking — no rules, just awareness.',
+};
+
+const MONEY_MINDSET_TIPS = {
+  'in-control':  'You\'re stable. Now optimize — what\'s the one move that compounds most?',
+  'stressed':    'Financial stress is real. Focus on building a $500 emergency fund first — it changes everything.',
+  'avoidant':    'Avoidance makes it worse. Spend 10 minutes this week just looking at your accounts. That\'s it.',
+  'clueless':    'No judgment. Start here: what\'s your monthly take-home? That one number unlocks everything.',
+};
+
+export default function FinanceTab({ profile }) {
+  const financeDetails = profile?.goalDetails?.finance;
+  const challenge  = financeDetails?.[0];
+  const budgetSit  = financeDetails?.[1];
+  const moneyMind  = financeDetails?.[2];
+  const plan       = FINANCE_PLANS[challenge] ?? null;
   const placeholders = [
     { label: "Monthly Budget", value: "$1,200", change: "+5%", icon: "💰", color: "bg-green-50 border-green-100" },
     { label: "Spent This Month", value: "$840", change: "70%", icon: "📊", color: "bg-blue-50 border-blue-100" },
@@ -9,9 +47,35 @@ export default function FinanceTab() {
   return (
     <div className="p-4 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-dark">Finance & Screen Time</h1>
-        <p className="text-gray-500 text-sm">Coming soon — placeholder data</p>
+        <h1 className="text-2xl font-bold text-dark">Finance</h1>
+        <p className="text-gray-500 text-sm">Your personalized money plan</p>
       </div>
+
+      {plan && (
+        <div className="bg-white rounded-2xl shadow-sm p-5 mb-4 border-l-4 border-orange-400">
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Your Action Plan</span>
+          <h2 className="text-lg font-bold text-dark mt-1 mb-3">{plan.headline}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+            {plan.steps.map((step, i) => (
+              <div key={i} className="bg-orange-50 rounded-xl p-3 text-xs text-orange-900">
+                <span className="font-bold mr-1">Step {i + 1}:</span>{step}
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            {budgetSit && BUDGET_TIPS[budgetSit] && (
+              <div className="flex-1 bg-gray-50 rounded-xl px-3 py-2 text-xs text-gray-600">
+                <span className="font-semibold text-dark">Budget situation: </span>{BUDGET_TIPS[budgetSit]}
+              </div>
+            )}
+            {moneyMind && MONEY_MINDSET_TIPS[moneyMind] && (
+              <div className="flex-1 bg-yellow-50 rounded-xl px-3 py-2 text-xs text-yellow-800">
+                <span className="font-semibold">Money mindset: </span>{MONEY_MINDSET_TIPS[moneyMind]}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         {placeholders.map((item) => (

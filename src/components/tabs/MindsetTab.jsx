@@ -10,12 +10,58 @@ const moods = [
   { emoji: '🤩', label: 'Amazing', value: 5 },
 ];
 
-export default function MindsetTab() {
+const MINDSET_FOCUS = {
+  stress: {
+    headline: 'Stress Reduction Protocol',
+    prompts: ['What drained you most today — and can you reduce it tomorrow?', 'Name one thing you can let go of right now.', 'What would your calmest self tell you today?'],
+    tip: 'Stress compounds when unnamed. Writing it down shrinks it.',
+  },
+  sleep: {
+    headline: 'Sleep Optimization Mindset',
+    prompts: ['What will you do differently tonight to sleep better?', 'Rate your energy today 1–10. What affected it most?', 'What can you cut from your evening to protect your sleep?'],
+    tip: 'Your thoughts before bed set your nervous system state for the night.',
+  },
+  journal: {
+    headline: 'Reflection Practice',
+    prompts: ['What\'s one moment today worth remembering?', 'What did you learn about yourself this week?', 'If today was a chapter title in your life story, what would it be called?'],
+    tip: 'The goal isn\'t perfect prose — it\'s honest observation.',
+  },
+  motivation: {
+    headline: 'Momentum Building',
+    prompts: ['What\'s one small win from today, however tiny?', 'What would tomorrow look like if you were fully motivated?', 'What is the one thing you keep avoiding that would change everything?'],
+    tip: 'Motivation follows action, not the other way around. Start small.',
+  },
+};
+
+const STRESS_COPE_TIPS = {
+  exercise:  '💪 Your go-to is movement — schedule it before stress hits, not after.',
+  talk:      '💬 You process by talking — identify one person you can call on hard days.',
+  media:     '📱 Distraction works short-term. Add one active coping tool for the hard days.',
+  nothing:   '🌀 No strategy yet — try 4-7-8 breathing: in 4s, hold 7s, out 8s.',
+};
+
+const OVERWHELM_TIPS = {
+  rarely:    'You handle pressure well. Use mindset work to stay sharp at the top.',
+  sometimes: 'Occasional overwhelm is normal. Build a reset routine for bad days.',
+  often:     'Frequent overwhelm suggests too much input. Time to prune commitments.',
+  always:    'Constant overwhelm needs immediate attention — start with one fewer commitment.',
+};
+
+export default function MindsetTab({ profile }) {
   const [selectedMood, setSelectedMood] = useState(3);
   const [reflection, setReflection] = useState('');
   const [promptIdx, setPromptIdx] = useState(0);
   const [promptDone, setPromptDone] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const mindsetDetails = profile?.goalDetails?.mindset;
+  const mindsetGoal  = mindsetDetails?.[0];
+  const copingStyle  = mindsetDetails?.[1];
+  const overwhelm    = mindsetDetails?.[2];
+  const focus        = MINDSET_FOCUS[mindsetGoal] ?? null;
+
+  // Use personalized prompts if available, fall back to mock data
+  const activePrompts = focus ? focus.prompts : mindsetPrompts;
 
   const nextPrompt = () => {
     setPromptIdx((i) => (i + 1) % mindsetPrompts.length);
@@ -34,6 +80,27 @@ export default function MindsetTab() {
         <p className="text-gray-500 text-sm">Daily prompts, mood tracking & reflection</p>
       </div>
 
+      {/* Personalized insight card */}
+      {focus && (
+        <div className="bg-white rounded-2xl shadow-sm p-5 mb-4 border-l-4 border-purple-400">
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Your Focus</span>
+          <h2 className="text-lg font-bold text-dark mt-1 mb-1">{focus.headline}</h2>
+          <p className="text-sm text-gray-500 italic mb-3">"{focus.tip}"</p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            {copingStyle && STRESS_COPE_TIPS[copingStyle] && (
+              <div className="flex-1 bg-gray-50 rounded-xl px-3 py-2 text-xs text-gray-600">
+                <span className="font-semibold text-dark">Your coping style: </span>{STRESS_COPE_TIPS[copingStyle]}
+              </div>
+            )}
+            {overwhelm && OVERWHELM_TIPS[overwhelm] && (
+              <div className="flex-1 bg-purple-50 rounded-xl px-3 py-2 text-xs text-purple-800">
+                <span className="font-semibold">Overwhelm level: </span>{OVERWHELM_TIPS[overwhelm]}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Daily Prompt */}
         <div className="bg-white rounded-2xl shadow-sm p-6">
@@ -50,7 +117,7 @@ export default function MindsetTab() {
 
           <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl p-5 mb-4 border border-purple-100">
             <p className="text-lg font-medium text-dark text-center">
-              {mindsetPrompts[promptIdx]}
+              {activePrompts[promptIdx % activePrompts.length]}
             </p>
           </div>
 

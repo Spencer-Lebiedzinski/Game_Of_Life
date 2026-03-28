@@ -6,7 +6,26 @@ import AccountabilityCircle from '../AccountabilityCircle';
 const medalColors = ['text-yellow-400', 'text-gray-400', 'text-orange-400'];
 const sorted = [...friends].sort((a, b) => b.xp - a.xp);
 
-export default function SocialTab({ theme, userName }) {
+const SOCIAL_GOALS = {
+  meet:    { headline: 'Expand Your Circle', actions: ['Say hi to one new person today', 'Join one club, class, or group this week', 'Ask someone you see often their name'] },
+  friends: { headline: 'Deepen Your Friendships', actions: ['Text a friend you haven\'t talked to in a while', 'Suggest a specific plan instead of "we should hang"', 'Remember one thing about each friend\'s life this week'] },
+  phone:   { headline: 'Reclaim Real Connection', actions: ['Phone-free meals — even just one per day', 'When with others, put phone face-down', 'Schedule a phone-free activity each week'] },
+  goals:   { headline: 'Intentional Social Life', actions: ['Define: how many close friends do you want?', 'Block time for social activities like you would work', 'Review your social life monthly — are you investing in the right people?'] },
+};
+
+const BARRIER_TIPS = {
+  anxiety:    '😬 Social anxiety is common. Start tiny — say hi to one person today. That\'s the whole goal.',
+  time:       '⏰ No time for social? Combine it. Study together, walk together, eat together.',
+  confidence: '🪞 Confidence builds from action, not from waiting to feel ready. One interaction per day.',
+  location:   '📍 Hard to meet people nearby? Online communities count. Find one in your interest area.',
+};
+
+export default function SocialTab({ theme, userName, profile }) {
+  const socialDetails = profile?.goalDetails?.social;
+  const socialGoal    = socialDetails?.[0];
+  const currentState  = socialDetails?.[1];
+  const barrier       = socialDetails?.[2];
+  const goalPlan      = SOCIAL_GOALS[socialGoal] ?? null;
   const [view, setView] = useState('leaderboard');
 
   return (
@@ -32,6 +51,26 @@ export default function SocialTab({ theme, userName }) {
           ))}
         </div>
       </div>
+
+      {/* Personalized social plan */}
+      {goalPlan && (
+        <div className="bg-white rounded-2xl shadow-sm p-5 mb-4 border-l-4 border-purple-400">
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Your Social Goal</span>
+          <h2 className="text-lg font-bold text-dark mt-1 mb-3">{goalPlan.headline}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+            {goalPlan.actions.map((action, i) => (
+              <div key={i} className="bg-purple-50 rounded-xl p-3 text-xs text-purple-900">
+                <span className="font-bold mr-1">{i + 1}.</span>{action}
+              </div>
+            ))}
+          </div>
+          {barrier && BARRIER_TIPS[barrier] && (
+            <div className="bg-gray-50 rounded-xl px-3 py-2 text-xs text-gray-600">
+              <span className="font-semibold text-dark">Your barrier: </span>{BARRIER_TIPS[barrier]}
+            </div>
+          )}
+        </div>
+      )}
 
       {view === 'leaderboard' ? (
         <>
