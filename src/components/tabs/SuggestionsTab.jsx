@@ -2,36 +2,10 @@ import { useState } from 'react';
 import { Sparkles, RefreshCw } from 'lucide-react';
 import SuggestionCard from '../SuggestionCard';
 
-const GOAL_TO_BACKEND = {
-  school:   'better_grades',
-  fitness:  'lose_weight',
-  mindset:  'reduce_stress',
-  social:   'be_more_social',
-  finance:  'save_money',
-  sleep:    'sleep_better',
-};
-
-// Builds a minimal profile from what the frontend onboarding collected
-function buildProfile(name, goals) {
-  return {
-    user_id: 'frontend-user',
-    name: name || 'Player',
-    eating_quality: 3,
-    sleep_hours: 7,
-    exercise_freq: 3,
-    stress_level: 3,
-    spending_awareness: 3,
-    screen_time_struggle: 'sometimes',
-    social_activity: 3,
-    goals: goals.map((g) => GOAL_TO_BACKEND[g] || g),
-    vaping_drinking: false,
-    academic_struggle: null,
-    onboarding_complete: true,
-  };
-}
 
 export default function SuggestionsTab({ userName, theme, goals = [], userId = 'frontend-user' }) {
   const [suggestions, setSuggestions] = useState([]);
+  const [sessionId, setSessionId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [fetched, setFetched] = useState(false);
@@ -47,11 +21,7 @@ export default function SuggestionsTab({ userName, theme, goals = [], userId = '
       const res = await fetch('http://localhost:8000/api/suggestions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          profile_override: buildProfile(userName, goals),
-          checkins_override: [],
-        }),
+        body: JSON.stringify({ user_id: userId }),
       });
 
       if (!res.ok) {
@@ -60,7 +30,8 @@ export default function SuggestionsTab({ userName, theme, goals = [], userId = '
       }
 
       const data = await res.json();
-      setSuggestions(data.suggestions.map((s) => ({ ...s, completed: false })));
+      setSessionId(data.session_id);
+      setSuggestions(data.suggestions);
       setFetched(true);
     } catch (err) {
       setError(err.message);
@@ -70,12 +41,23 @@ export default function SuggestionsTab({ userName, theme, goals = [], userId = '
   }
 
   function handleComplete(completedSuggestion) {
+    // Optimistic update
     setSuggestions((prev) =>
-      prev.map((s) =>
-        s.domain === completedSuggestion.domain ? { ...s, completed: true } : s
-      )
+      prev.map((s) => s.id === completedSuggestion.id ? { ...s, completed: true } : s)
     );
-    // TODO: POST to /api/suggestions/complete to award XP when backend supports it
+
+    // Persist to MongoDB so Gemini learns from this completion
+    if (sessionId) {
+      fetch('http://localhost:8000/api/quests/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          session_id: sessionId,
+          quest_id: completedSuggestion.id,
+        }),
+      }).catch(() => {});  // fire and forget — UI already updated
+    }
   }
 
   const completedCount = suggestions.filter((s) => s.completed).length;
