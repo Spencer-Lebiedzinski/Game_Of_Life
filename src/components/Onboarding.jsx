@@ -108,9 +108,9 @@ export default function Onboarding({ onComplete }) {
   return (
     <div
       className="min-h-screen flex items-center justify-center p-4 transition-colors duration-500"
-      style={{ backgroundColor: theme.bg }}
+      style={{ backgroundColor: '#000000' }}
     >
-      <div className={`w-full max-w-lg ${isDark ? 'text-white' : 'text-dark'}`}>
+      <div className="w-full max-w-lg text-white">
         {/* Progress dots */}
         <div className="flex justify-center gap-2 mb-8">
           {STEPS.slice(0, -1).map((_, i) => (
@@ -133,14 +133,14 @@ export default function Onboarding({ onComplete }) {
           <div className="text-center">
             <div className="text-7xl mb-6">🎮</div>
             <h1 className="text-4xl font-bold mb-3">Game of Life</h1>
-            <p className={`text-lg mb-8 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+            <p className="text-lg mb-8 text-gray-400">
               Your gamified life dashboard. Track habits, crush goals, and level up every day.
             </p>
             <div className="grid grid-cols-3 gap-3 mb-10">
               {['Level Up', 'Daily Streaks', 'Life Score'].map((feat, i) => (
                 <div
                   key={i}
-                  className={`rounded-2xl p-4 text-center ${isDark ? 'bg-white/10' : 'bg-white'} shadow-sm`}
+                  className="rounded-2xl p-4 text-center bg-white/10 shadow-sm"
                 >
                   <div className="text-2xl mb-1">
                     {['⚡', '🔥', '📊'][i]}
@@ -157,7 +157,7 @@ export default function Onboarding({ onComplete }) {
           <div className="text-center">
             <div className="text-5xl mb-4">👋</div>
             <h2 className="text-3xl font-bold mb-2">What's your name?</h2>
-            <p className={`mb-8 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+            <p className="mb-8 text-gray-400">
               We'll use this to personalize your experience.
             </p>
             <input
@@ -167,11 +167,7 @@ export default function Onboarding({ onComplete }) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && name.trim() && next()}
-              className={`w-full text-center text-xl py-4 px-6 rounded-2xl border-2 focus:outline-none transition-colors mb-2 ${
-                isDark
-                  ? 'bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-white/60'
-                  : 'bg-white border-gray-200 text-dark placeholder-gray-400 focus:border-accent'
-              }`}
+              className="w-full text-center text-xl py-4 px-6 rounded-2xl border-2 focus:outline-none transition-colors mb-2 bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-white/60"
               style={{ '--tw-ring-color': theme.accent }}
             />
           </div>
@@ -183,7 +179,7 @@ export default function Onboarding({ onComplete }) {
             <div className="text-center mb-6">
               <div className="text-5xl mb-3">🎯</div>
               <h2 className="text-3xl font-bold mb-2">What are your goals?</h2>
-              <p className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className="text-gray-400">
                 Pick as many as you like. We'll customize your dashboard.
               </p>
             </div>
@@ -196,12 +192,8 @@ export default function Onboarding({ onComplete }) {
                     onClick={() => toggleGoal(goal.id)}
                     className={`relative p-4 rounded-2xl text-left transition-all border-2 ${
                       selected
-                        ? isDark
-                          ? 'border-white bg-white/20'
-                          : 'border-current bg-white shadow-md'
-                        : isDark
-                        ? 'border-white/10 bg-white/5 hover:bg-white/10'
-                        : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm'
+                        ? 'border-white bg-white/20'
+                        : 'border-white/10 bg-white/5 hover:bg-white/10'
                     }`}
                     style={selected ? { borderColor: theme.accent } : {}}
                   >
@@ -215,7 +207,7 @@ export default function Onboarding({ onComplete }) {
                     )}
                     <span className="text-2xl block mb-1">{goal.icon}</span>
                     <p className="font-semibold text-sm">{goal.label}</p>
-                    <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <p className="text-xs mt-0.5 text-gray-400">
                       {goal.desc}
                     </p>
                   </button>
@@ -231,7 +223,7 @@ export default function Onboarding({ onComplete }) {
             <div className="text-center mb-6">
               <div className="text-5xl mb-3">🎨</div>
               <h2 className="text-3xl font-bold mb-2">Pick your vibe</h2>
-              <p className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className="text-gray-400">
                 Choose a color scheme that motivates you.
               </p>
             </div>
@@ -244,7 +236,7 @@ export default function Onboarding({ onComplete }) {
                     selectedTheme === t.id
                       ? 'border-current shadow-lg scale-105'
                       : 'border-transparent hover:scale-102'
-                  } ${t.dark ? 'bg-slate-900 text-white' : 'bg-white text-dark'}`}
+                  } bg-white/10 text-white`}
                   style={selectedTheme === t.id ? { borderColor: t.accent } : {}}
                 >
                   <div className="flex gap-1.5 mb-2">
@@ -264,22 +256,22 @@ export default function Onboarding({ onComplete }) {
           <div className="text-center">
             <div className="text-7xl mb-4 animate-bounce">🚀</div>
             <h2 className="text-3xl font-bold mb-2">You're all set, {name || 'Player'}!</h2>
-            <p className={`text-lg mb-6 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+            <p className="text-lg mb-6 text-gray-400">
               Your personalized life dashboard is ready. Time to level up!
             </p>
-            <div className={`rounded-2xl p-5 mb-8 ${isDark ? 'bg-white/10' : 'bg-white'} shadow-sm`}>
+            <div className="rounded-2xl p-5 mb-8 bg-white/10 shadow-sm">
               <div className="flex justify-center gap-6">
                 <div className="text-center">
                   <p className="text-3xl font-bold" style={{ color: theme.accent }}>1</p>
-                  <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Level</p>
+                  <p className="text-xs mt-1 text-gray-400">Level</p>
                 </div>
                 <div className="text-center">
                   <p className="text-3xl font-bold" style={{ color: theme.accent }}>0</p>
-                  <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>XP</p>
+                  <p className="text-xs mt-1 text-gray-400">XP</p>
                 </div>
                 <div className="text-center">
                   <p className="text-3xl font-bold" style={{ color: theme.accent }}>{selectedGoals.length}</p>
-                  <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Goals</p>
+                  <p className="text-xs mt-1 text-gray-400">Goals</p>
                 </div>
               </div>
             </div>
@@ -301,9 +293,7 @@ export default function Onboarding({ onComplete }) {
               className={`flex items-center gap-1 px-4 py-2 rounded-xl text-sm transition-colors ${
                 step === 0
                   ? 'invisible'
-                  : isDark
-                  ? 'text-gray-400 hover:text-white'
-                  : 'text-gray-500 hover:text-dark'
+                  : 'text-gray-400 hover:text-white'
               }`}
             >
               <ChevronLeft size={16} />
