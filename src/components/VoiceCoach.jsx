@@ -79,7 +79,6 @@ export default function VoiceCoach({ tasks, userName, theme }) {
 
   const play = async () => {
     if (playing) { stop(); return; }
-    setError('');
     const text = buildBriefing(tasks, userName);
     setScript(text);
     wordsRef.current = text.split(' ');

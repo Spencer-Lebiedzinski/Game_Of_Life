@@ -108,9 +108,9 @@ export default function Onboarding({ onComplete }) {
   return (
     <div
       className="min-h-screen flex items-center justify-center p-4 transition-colors duration-500"
-      style={{ backgroundColor: '#000000' }}
+      style={{ backgroundColor: stepKey === 'theme' ? '#ffffff' : '#000000' }}
     >
-      <div className="w-full max-w-lg text-white">
+      <div className={`w-full max-w-lg ${stepKey === 'theme' ? 'text-dark' : 'text-white'}`}>
         {/* Progress dots */}
         <div className="flex justify-center gap-2 mb-8">
           {STEPS.slice(0, -1).map((_, i) => (
@@ -223,7 +223,7 @@ export default function Onboarding({ onComplete }) {
             <div className="text-center mb-6">
               <div className="text-5xl mb-3">🎨</div>
               <h2 className="text-3xl font-bold mb-2">Pick your vibe</h2>
-              <p className="text-gray-400">
+              <p className="text-gray-500">
                 Choose a color scheme that motivates you.
               </p>
             </div>
@@ -236,7 +236,7 @@ export default function Onboarding({ onComplete }) {
                     selectedTheme === t.id
                       ? 'border-current shadow-lg scale-105'
                       : 'border-transparent hover:scale-102'
-                  } bg-white/10 text-white`}
+                  } bg-white border border-gray-100 text-dark shadow-sm`}
                   style={selectedTheme === t.id ? { borderColor: t.accent } : {}}
                 >
                   <div className="flex gap-1.5 mb-2">
@@ -293,7 +293,7 @@ export default function Onboarding({ onComplete }) {
               className={`flex items-center gap-1 px-4 py-2 rounded-xl text-sm transition-colors ${
                 step === 0
                   ? 'invisible'
-                  : 'text-gray-400 hover:text-white'
+                  : stepKey === 'theme' ? 'text-gray-400 hover:text-dark' : 'text-gray-400 hover:text-white'
               }`}
             >
               <ChevronLeft size={16} />
