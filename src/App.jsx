@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuth0 } from '@auth0/auth0-react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import SchoolTab from './components/tabs/SchoolTab';
@@ -10,6 +11,7 @@ import FinanceTab from './components/tabs/FinanceTab';
 import FloatingActionButton from './components/FloatingActionButton';
 import Onboarding from './components/Onboarding';
 import SuggestionsTab from './components/tabs/SuggestionsTab';
+import LoginScreen from './auth/LoginScreen.jsx';
 import { weekTasks } from './data/mockData';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -20,10 +22,14 @@ function getTodayKey() {
 }
 
 export default function App() {
-  const [profile, setProfile] = useState(null); // null = not logged in
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth0();
+  const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [tasks, setTasks] = useState(weekTasks);
   const [selectedDay, setSelectedDay] = useState(getTodayKey());
+
+  // Real Auth0 user ID, falls back to placeholder if Auth0 not configured
+  const userId = user?.sub || 'frontend-user';
 
   const handleOnboardingComplete = (data) => {
     setProfile(data);
@@ -52,8 +58,20 @@ export default function App() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="text-4xl animate-pulse">🎮</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginScreen />;
+  }
+
   if (!profile) {
-    return <Onboarding onComplete={handleOnboardingComplete} />;
+    return <Onboarding onComplete={handleOnboardingComplete} userId={userId} />;
   }
 
   const renderContent = () => {
@@ -82,7 +100,7 @@ export default function App() {
       case 'finance':
         return <FinanceTab />;
       case 'suggestions':
-        return <SuggestionsTab userName={profile.name} theme={profile.theme} goals={profile.goals} />;
+        return <SuggestionsTab userName={profile.name} theme={profile.theme} goals={profile.goals} userId={userId} />;
       default:
         return null;
     }

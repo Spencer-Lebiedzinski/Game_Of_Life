@@ -70,7 +70,7 @@ const THEMES = [
 
 const STEPS = ['welcome', 'name', 'goals', 'theme', 'done'];
 
-export default function Onboarding({ onComplete }) {
+export default function Onboarding({ onComplete, userId = 'frontend-user' }) {
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [selectedGoals, setSelectedGoals] = useState([]);
@@ -105,7 +105,7 @@ export default function Onboarding({ onComplete }) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        user_id: 'frontend-user',
+        user_id: userId,
         name: playerName,
         eating_quality: 3,
         sleep_hours: 7,

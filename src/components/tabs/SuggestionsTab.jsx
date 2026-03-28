@@ -30,7 +30,7 @@ function buildProfile(name, goals) {
   };
 }
 
-export default function SuggestionsTab({ userName, theme, goals = [] }) {
+export default function SuggestionsTab({ userName, theme, goals = [], userId = 'frontend-user' }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -48,7 +48,7 @@ export default function SuggestionsTab({ userName, theme, goals = [] }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: 'frontend-user',
+          user_id: userId,
           profile_override: buildProfile(userName, goals),
           checkins_override: [],
         }),
