@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from datetime import datetime, timezone
 from db import get_db
-from services.stats_service import get_or_create_stats, award_xp, xp_to_next
+from services.stats_service import get_or_create_stats, award_xp, xp_to_next, xp_for_level
 
 router = APIRouter()
 
@@ -12,7 +12,8 @@ DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 @router.get("/stats/{user_id}")
 async def get_stats(user_id: str):
     stats = await get_or_create_stats(user_id)
-    return {**stats, "xp_to_next": xp_to_next(stats["xp"])}
+    xp = stats["xp"]
+    return {**stats, "xp_to_next": xp_to_next(xp), "xp_for_level": xp_for_level(xp)}
 
 
 class AwardXPRequest(BaseModel):

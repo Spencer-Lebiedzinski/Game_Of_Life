@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { CheckCircle, Circle, Timer, AlertCircle, Plus } from 'lucide-react';
 
 const priorityColors = {
@@ -62,9 +62,12 @@ export default function SchoolTab({ profile }) {
   const [newTitle, setNewTitle]       = useState('');
   const [newDue, setNewDue]           = useState('');
   const [newPriority, setNewPriority] = useState('medium');
-  const [timerActive, setTimerActive] = useState(null);
+  const [timerActive, setTimerActive]   = useState(null);
   const [timerSeconds, setTimerSeconds] = useState(0);
-  const [timerRef, setTimerRef]       = useState(null);
+  const timerRef = useRef(null);
+
+  // Clean up interval when component unmounts
+  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
   const toggleDone = (id) => {
     setAssignments((prev) => prev.map((a) => (a.id === id ? { ...a, done: !a.done } : a)));
@@ -83,16 +86,15 @@ export default function SchoolTab({ profile }) {
   };
 
   const startTimer = (id) => {
+    if (timerRef.current) clearInterval(timerRef.current);
     if (timerActive === id) {
-      clearInterval(timerRef);
+      timerRef.current = null;
       setTimerActive(null);
       setTimerSeconds(0);
     } else {
-      if (timerRef) clearInterval(timerRef);
       setTimerActive(id);
       setTimerSeconds(0);
-      const ref = setInterval(() => setTimerSeconds((s) => s + 1), 1000);
-      setTimerRef(ref);
+      timerRef.current = setInterval(() => setTimerSeconds((s) => s + 1), 1000);
     }
   };
 

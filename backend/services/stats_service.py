@@ -18,7 +18,14 @@ def xp_to_level(xp: int) -> int:
     return level
 
 
+def xp_for_level(xp: int) -> int:
+    """XP threshold at the start of the current level."""
+    level = xp_to_level(xp)
+    return XP_FOR_LEVEL[level - 1]
+
+
 def xp_to_next(xp: int) -> int:
+    """Absolute XP threshold for the next level."""
     level = xp_to_level(xp)
     if level >= len(XP_FOR_LEVEL):
         return XP_FOR_LEVEL[-1]
@@ -44,32 +51,31 @@ async def get_or_create_stats(user_id: str) -> dict:
 async def award_xp(user_id: str, amount: int, source: str) -> dict:
     """
     Award XP to a user, recompute level, and update streak.
+    Uses atomic $inc for XP to prevent lost-update race conditions.
     Returns the updated stats snapshot.
     """
     db = get_db()
     stats = await get_or_create_stats(user_id)
     today = date.today().isoformat()
     last = stats.get("last_activity_date")
+    old_level = stats.get("level", 1)
 
-    # Streak logic
+    # Streak logic (still needs a read, but streak conflicts are harmless)
     if last is None:
         new_streak = 1
     elif last == today:
-        new_streak = stats["streak"]  # already active today
+        new_streak = stats["streak"]
     else:
         last_date = date.fromisoformat(last)
         today_date = date.fromisoformat(today)
         new_streak = stats["streak"] + 1 if today_date - last_date == timedelta(days=1) else 1
 
-    new_xp = stats["xp"] + amount
-    new_level = xp_to_level(new_xp)
-
-    await db.user_stats.update_one(
+    # Atomic increment — prevents two concurrent awards from overwriting each other
+    updated = await db.user_stats.find_one_and_update(
         {"user_id": user_id},
         {
+            "$inc": {"xp": amount},
             "$set": {
-                "xp": new_xp,
-                "level": new_level,
                 "streak": new_streak,
                 "last_activity_date": today,
             },
@@ -77,12 +83,24 @@ async def award_xp(user_id: str, amount: int, source: str) -> dict:
                 "xp_history": {"date": today, "amount": amount, "source": source}
             },
         },
+        return_document=True,
     )
+
+    new_xp = updated["xp"]
+    new_level = xp_to_level(new_xp)
+
+    # Update level if it changed (derived from the now-correct XP)
+    if new_level != updated.get("level", 1):
+        await db.user_stats.update_one(
+            {"user_id": user_id},
+            {"$set": {"level": new_level}},
+        )
 
     return {
         "xp": new_xp,
         "level": new_level,
         "streak": new_streak,
         "xp_to_next": xp_to_next(new_xp),
-        "leveled_up": new_level > stats["level"],
+        "xp_for_level": xp_for_level(new_xp),
+        "leveled_up": new_level > old_level,
     }

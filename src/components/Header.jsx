@@ -8,12 +8,15 @@ export default function Header({ activeTab, setActiveTab, userName, theme, goals
   const [showNotifs, setShowNotifs] = useState(false);
   const [showMicToast, setShowMicToast] = useState(false);
 
-  const xp = userStats?.xp ?? 0;
-  const level = userStats?.level ?? 1;
-  const streak = userStats?.streak ?? 0;
-  const xpToNext = userStats?.xp_to_next ?? 300;
-  const badges = userStats?.badges ?? [];
-  const xpPercent = Math.round((xp / xpToNext) * 100);
+  const xp       = userStats?.xp          ?? 0;
+  const level    = userStats?.level        ?? 1;
+  const streak   = userStats?.streak       ?? 0;
+  const xpToNext = userStats?.xp_to_next  ?? 300;
+  const xpStart  = userStats?.xp_for_level ?? 0;
+  const badges   = userStats?.badges       ?? [];
+  // Percentage within the current level window (not total XP / absolute threshold)
+  const levelRange = xpToNext - xpStart;
+  const xpPercent  = levelRange > 0 ? Math.min(100, Math.round(((xp - xpStart) / levelRange) * 100)) : 0;
 
   const accent = theme?.accent || '#2DD4BF';
   const primary = theme?.primary || '#6EE7B7';

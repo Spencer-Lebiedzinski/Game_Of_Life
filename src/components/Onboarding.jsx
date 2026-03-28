@@ -98,7 +98,7 @@ export default function Onboarding({ onComplete, userId = 'frontend-user' }) {
         spending_awareness: selectedGoals.includes('finance') ? 2 : 3,
         screen_time_struggle: 'sometimes',
         social_activity: selectedGoals.includes('social') ? 2 : 3,
-        goals: selectedGoals.map((g) => GOAL_TO_BACKEND[g] || g).slice(0, 3),
+        goals: selectedGoals.map((g) => GOAL_TO_BACKEND[g] || g),
         vaping_drinking: false,
         academic_struggle: goalDetails.school?.[0] || null,
         goal_details: goalDetails,
