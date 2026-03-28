@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Volume2, VolumeX, Play, Square, Sparkles, Loader } from 'lucide-react';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const ELEVENLABS_KEY = import.meta.env.VITE_ELEVENLABS_API_KEY;
-// Rachel — warm, clear, natural-sounding voice
-const VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
 function Waveform({ active }) {
   return (
@@ -23,55 +22,69 @@ function Waveform({ active }) {
       <style>{`
         @keyframes wave {
           from { height: 3px; }
-          to   { height: ${Math.floor(Math.random() * 8) + 18}px; }
+          to   { height: 26px; }
         }
       `}</style>
     </div>
   );
 }
 
-function buildBriefing(tasks, userName) {
+async function generateBriefing(tasks, userName) {
   const pending = (tasks || []).filter(t => !t.done);
   const done    = (tasks || []).filter(t => t.done);
-  const school  = pending.filter(t => t.category === 'school');
-  const fitness = pending.filter(t => t.category === 'fitness');
   const hour    = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+  const dayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
 
-  let s = `${greeting}, ${userName || 'champion'}. `;
-  if (pending.length === 0) {
-    s += `You've completed every task today — that's incredible. Take a moment to celebrate, and keep that streak alive!`;
-  } else {
-    s += `Here's your daily briefing. `;
-    if (done.length > 0) s += `You've already crushed ${done.length} task${done.length > 1 ? 's' : ''} — great momentum! `;
-    s += `You have ${pending.length} task${pending.length > 1 ? 's' : ''} remaining today. `;
-    if (school.length > 0) s += `Top priority: ${school[0].title}${school[0].time ? ` at ${school[0].time}` : ''}. `;
-    if (fitness.length > 0) s += `Don't skip your workout — your future self will thank you. `;
-    s += `Stay locked in. Make every hour count. Let's go!`;
-  }
-  return s;
+  const taskSummary = pending.length
+    ? pending.map(t => `- ${t.title}${t.time ? ` (${t.time})` : ''}${t.category ? ` [${t.category}]` : ''}`).join('\n')
+    : 'No tasks remaining — all done!';
+
+  const doneSummary = done.length
+    ? done.map(t => `- ${t.title}`).join('\n')
+    : 'None yet';
+
+  const prompt = `You are an energetic, personal life coach AI inside a gamified life dashboard app called "Game of Life".
+
+Generate a spoken daily briefing for ${userName || 'the user'} for this ${timeOfDay} on ${dayName}.
+
+Tasks already completed today:
+${doneSummary}
+
+Tasks still to do today:
+${taskSummary}
+
+Rules:
+- Keep it to 4–6 sentences, under 120 words — it will be read aloud
+- Open with a warm ${timeOfDay} greeting using their name
+- Acknowledge completed tasks with genuine praise if any
+- Call out the 1–2 most important pending tasks by name with urgency or encouragement
+- End with a short punchy motivational line that references the "Game of Life" or leveling up
+- Sound natural and spoken, not written — no bullet points, no markdown
+- Be warm, energetic, and direct. Think coach, not robot.`;
+
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const result = await model.generateContent(prompt);
+  return result.response.text().trim();
 }
 
 export default function VoiceCoach({ tasks, userName, theme }) {
-  const [playing, setPlaying]   = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [script, setScript]     = useState('');
-  const [muted, setMuted]       = useState(false);
-  const [wordIdx, setWordIdx]   = useState(-1);
-  const [needsPaid, setNeedsPaid] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [script, setScript]   = useState('');
+  const [muted, setMuted]     = useState(false);
+  const [wordIdx, setWordIdx] = useState(-1);
+  const [error, setError]     = useState('');
 
-  const audioRef    = useRef(null);
   const intervalRef = useRef(null);
+  const utterRef    = useRef(null);
   const wordsRef    = useRef([]);
 
   const accent  = theme?.accent  || '#2DD4BF';
   const primary = theme?.primary || '#6EE7B7';
 
   const stop = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
+    window.speechSynthesis.cancel();
     clearInterval(intervalRef.current);
     setPlaying(false);
     setWordIdx(-1);
@@ -79,87 +92,62 @@ export default function VoiceCoach({ tasks, userName, theme }) {
 
   const play = async () => {
     if (playing) { stop(); return; }
-    const text = buildBriefing(tasks, userName);
-    setScript(text);
-    wordsRef.current = text.split(' ');
 
-    // ── Try ElevenLabs first ──────────────────────────────────────────────
-    if (ELEVENLABS_KEY) {
-      setLoading(true);
-      try {
-        const res = await fetch(
-          `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`,
-          {
-            method: 'POST',
-            headers: {
-              'xi-api-key': ELEVENLABS_KEY,
-              'Content-Type': 'application/json',
-              'Accept': 'audio/mpeg',
-            },
-            body: JSON.stringify({
-              text,
-              model_id: 'eleven_flash_v2_5',
-              voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.3, use_speaker_boost: true },
-            }),
-          }
-        );
+    setError('');
+    setLoading(true);
 
-        if (res.status === 402 || res.status === 401) {
-          const body = await res.json().catch(() => ({}));
-          const msg  = body?.detail?.message || '';
-          if (msg.includes('library voices') || msg.includes('upgrade')) {
-            setNeedsPaid(true);
-          }
-          throw new Error('plan_required');
-        }
-        if (!res.ok) throw new Error(`ElevenLabs ${res.status}`);
-
-        const blob  = await res.blob();
-        const url   = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        audio.volume = muted ? 0 : 1;
-        audioRef.current = audio;
-        audio.onended = () => { setPlaying(false); setWordIdx(-1); clearInterval(intervalRef.current); URL.revokeObjectURL(url); };
-        audio.onerror = () => { setPlaying(false); };
-        await audio.play();
-        setPlaying(true);
-        setLoading(false);
-
-        const estDuration = text.split(' ').length * 380;
-        let wi = 0;
-        intervalRef.current = setInterval(() => {
-          setWordIdx(wi++);
-          if (wi >= wordsRef.current.length) clearInterval(intervalRef.current);
-        }, estDuration / wordsRef.current.length);
-        return;
-      } catch (e) {
-        setLoading(false);
-        if (e.message !== 'plan_required') console.warn('ElevenLabs error:', e);
-      }
+    let text;
+    try {
+      text = await generateBriefing(tasks, userName);
+    } catch (e) {
+      console.error('Gemini error:', e);
+      setError('Could not reach Gemini — check your API key.');
+      setLoading(false);
+      return;
     }
 
-    // ── Fallback: Web Speech API ──────────────────────────────────────────
+    setScript(text);
+    wordsRef.current = text.split(' ');
+    setLoading(false);
+
+    // Speak with Web Speech API
     const utter = new SpeechSynthesisUtterance(text);
-    utter.rate = 0.95; utter.pitch = 1.05; utter.volume = muted ? 0 : 1;
+    utter.rate   = 0.94;
+    utter.pitch  = 1.05;
+    utter.volume = muted ? 0 : 1;
+
+    // Pick best available voice
     const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v => v.name.includes('Samantha') || v.name.includes('Google US English') || v.name.includes('Aria'));
+    const preferred = voices.find(v =>
+      v.name.includes('Samantha') ||
+      v.name.includes('Google US English') ||
+      v.name.includes('Microsoft Aria') ||
+      v.name.includes('Karen') ||
+      v.name.includes('Moira')
+    );
     if (preferred) utter.voice = preferred;
+
     let wi = 0;
     utter.onboundary = e => { if (e.name === 'word') setWordIdx(wi++); };
     utter.onend = () => { setPlaying(false); setWordIdx(-1); clearInterval(intervalRef.current); };
+    utter.onerror = () => { setPlaying(false); clearInterval(intervalRef.current); };
+
+    utterRef.current = utter;
     window.speechSynthesis.speak(utter);
     setPlaying(true);
+
+    // Fallback word-highlight sync
+    let fwi = 0;
     intervalRef.current = setInterval(() => {
-      setWordIdx(wi++);
-      if (wi >= wordsRef.current.length) clearInterval(intervalRef.current);
-    }, 350);
+      setWordIdx(fwi++);
+      if (fwi >= wordsRef.current.length) clearInterval(intervalRef.current);
+    }, 370);
   };
 
-  useEffect(() => () => { stop(); window.speechSynthesis.cancel(); }, []);
+  useEffect(() => () => { stop(); }, []);
 
-  // Mute/unmute live audio
   useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = muted ? 0 : 1;
+    if (utterRef.current) utterRef.current.volume = muted ? 0 : 1;
   }, [muted]);
 
   const words = script.split(' ');
@@ -184,17 +172,17 @@ export default function VoiceCoach({ tasks, userName, theme }) {
               <p className="font-bold text-sm text-white">Voice Coach</p>
               <div className="flex items-center gap-1 bg-white/10 rounded-full px-2 py-0.5">
                 <Sparkles size={10} style={{ color: accent }} />
-                <span className="text-xs font-medium" style={{ color: accent }}>ElevenLabs</span>
+                <span className="text-xs font-medium" style={{ color: accent }}>Gemini AI</span>
               </div>
             </div>
-            <p className="text-xs text-gray-400">
-              {ELEVENLABS_KEY && !needsPaid ? 'AI voice · Rachel' : needsPaid ? 'Upgrade to unlock AI voice' : 'Browser voice (no key set)'}
-            </p>
+            <p className="text-xs text-gray-400">Personalized daily briefing</p>
           </div>
         </div>
         <button onClick={() => setMuted(!muted)}
           className="p-1.5 rounded-full hover:bg-white/10 transition-colors">
-          {muted ? <VolumeX size={16} className="text-gray-500" /> : <Volume2 size={16} className="text-gray-400" />}
+          {muted
+            ? <VolumeX size={16} className="text-gray-500" />
+            : <Volume2 size={16} className="text-gray-400" />}
         </button>
       </div>
 
@@ -205,43 +193,38 @@ export default function VoiceCoach({ tasks, userName, theme }) {
 
       {/* Transcript */}
       {script ? (
-        <div className="bg-white/5 rounded-xl p-3 mb-4 max-h-20 overflow-y-auto text-xs leading-relaxed">
+        <div className="bg-white/5 rounded-xl p-3 mb-4 max-h-24 overflow-y-auto text-xs leading-relaxed">
           {words.map((w, i) => (
             <span key={i} className={`transition-colors duration-100 ${
-              i === wordIdx ? 'text-white font-semibold' : i < wordIdx ? 'text-gray-600' : 'text-gray-400'
+              i === wordIdx ? 'text-white font-semibold' :
+              i < wordIdx  ? 'text-gray-600' : 'text-gray-400'
             }`}>{w}{' '}</span>
           ))}
         </div>
       ) : (
         <div className="bg-white/5 rounded-xl p-3 mb-4 text-xs text-gray-500 text-center">
-          Press "Play My Day" for your personalized morning briefing
+          Gemini will read your tasks and write a personalized briefing
         </div>
       )}
 
-      {needsPaid && (
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 mb-3 text-xs text-yellow-300 flex items-start gap-2">
-          <Sparkles size={13} className="shrink-0 mt-0.5 text-yellow-400" />
-          <span>
-            ElevenLabs free tier doesn't allow API voice access.{' '}
-            <a href="https://elevenlabs.io/subscription" target="_blank" rel="noreferrer"
-              className="underline text-yellow-200 hover:text-white">Upgrade to Starter ($5/mo)</a>{' '}
-            to unlock AI voices. Using browser voice for now.
-          </span>
-        </div>
+      {error && (
+        <p className="text-xs text-red-400 mb-3 text-center">{error}</p>
       )}
 
       {/* Play button */}
       <button onClick={play} disabled={loading}
         className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all hover:opacity-90 disabled:opacity-60"
         style={{
-          background: playing ? 'linear-gradient(135deg,#EF4444,#DC2626)' : `linear-gradient(135deg,${primary},${accent})`,
+          background: playing
+            ? 'linear-gradient(135deg, #EF4444, #DC2626)'
+            : `linear-gradient(135deg, ${primary}, ${accent})`,
           color: '#0F172A',
         }}>
         {loading
-          ? <><Loader size={15} className="animate-spin" /> Generating…</>
+          ? <><Loader size={15} className="animate-spin" /> Gemini is thinking…</>
           : playing
           ? <><Square size={15} fill="currentColor" /> Stop</>
-          : <><Play  size={15} fill="currentColor" /> Play My Day</>
+          : <><Play size={15} fill="currentColor" /> Play My Day</>
         }
       </button>
     </div>
