@@ -131,6 +131,7 @@ export default function Dashboard({
 
           {/* Study Mode */}
           <StudyMode theme={theme} userId={userId} onXpAwarded={onXpAwarded} />
+          <StudyMode theme={theme} userId={userId} onXpAwarded={onXpAwarded} />
 
           <div className="bg-white rounded-2xl shadow-sm p-5">
             <div className="flex items-start justify-between gap-3 mb-4">
