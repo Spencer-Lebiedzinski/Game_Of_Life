@@ -5,7 +5,6 @@ import TaskList from './TaskList';
 import LifeScore from './LifeScore';
 import VoiceCoach from './VoiceCoach';
 import GroupLeaderboardPanel from './GroupLeaderboardPanel';
-import StudyMode from './StudyMode';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -298,8 +297,6 @@ export default function Dashboard({
               </div>
             );
           })()}
-
-          <StudyMode theme={theme} userId={userId} onXpAwarded={onXpAwarded} />
 
           <div className="bg-white rounded-2xl shadow-sm p-5">
             <div className="flex items-start justify-between gap-3 mb-4">
