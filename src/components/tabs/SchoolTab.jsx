@@ -79,14 +79,16 @@ function CanvasConnectPanel({ userId, onConnected }) {
   const [error, setError] = useState('');
 
   const handleConnect = async () => {
-    if (!token.trim()) return;
+    // Clean the token: strip whitespace and accidental "Bearer " prefix
+    const cleaned = token.trim().replace(/^Bearer\s+/i, '');
+    if (!cleaned) return;
     setLoading(true);
     setError('');
     try {
       const res = await fetch(`${CANVAS_API}/api/canvas/connect-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, token: token.trim() }),
+        body: JSON.stringify({ user_id: userId, token: cleaned }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -108,20 +110,23 @@ function CanvasConnectPanel({ userId, onConnected }) {
         </div>
         <div>
           <h3 className="font-semibold text-dark">Connect Canvas LMS</h3>
-          <p className="text-xs text-gray-500">See your real assignments, grades and due dates.</p>
+          <p className="text-xs text-gray-500">Syncs your real assignments, grades and due dates.</p>
         </div>
       </div>
-      <p className="text-xs text-gray-400 mb-3">
-        Canvas → Account → Settings → Approved Integrations → New Access Token
-      </p>
+      <ol className="text-xs text-gray-500 mb-3 space-y-0.5 list-decimal list-inside">
+        <li>Go to <strong>canvas.psu.edu</strong> → click your <strong>Account</strong> (top-left)</li>
+        <li>Click <strong>Settings</strong> → scroll to <strong>Approved Integrations</strong></li>
+        <li>Click <strong>+ New Access Token</strong> → give it a name → <strong>Generate Token</strong></li>
+        <li>Copy the token that appears (it starts with <code className="bg-gray-100 px-1 rounded">1~</code>) and paste below</li>
+      </ol>
       <div className="flex gap-2">
         <input
-          type="password"
-          placeholder="Paste your Canvas access token..."
+          type="text"
+          placeholder="Paste token here (starts with 1~...)"
           value={token}
           onChange={(e) => setToken(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
-          className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-400"
+          className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-400 font-mono"
         />
         <button
           onClick={handleConnect}
@@ -131,7 +136,7 @@ function CanvasConnectPanel({ userId, onConnected }) {
           {loading ? 'Connecting…' : 'Connect'}
         </button>
       </div>
-      {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+      {error && <p className="text-xs text-red-500 mt-2 break-words">{error}</p>}
     </div>
   );
 }
