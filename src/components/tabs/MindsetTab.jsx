@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CheckCircle, RefreshCw } from 'lucide-react';
+import { useTabData } from '../../hooks/useTabData';
 
 const moods = [
   { emoji: '😔', label: 'Low',     value: 1 },
@@ -61,13 +62,27 @@ const OVERWHELM_CONTEXT = {
   always:    'Constant overwhelm deserves real attention — one fewer commitment this week might matter more than any new technique.',
 };
 
-export default function MindsetTab({ profile }) {
+export default function MindsetTab({ profile, userId }) {
+  const [persisted, setPersisted] = useTabData(userId, 'mindset', {
+    reflection: '',
+    gratitude: ['', '', ''],
+    intention: '',
+  });
   const [selectedMood, setSelectedMood] = useState(3);
-  const [reflection, setReflection]     = useState('');
   const [promptIdx, setPromptIdx]       = useState(0);
   const [promptDone, setPromptDone]     = useState(false);
   const [saved, setSaved]               = useState(false);
-  const [gratitude, setGratitude]       = useState(['', '', '']);
+
+  const reflection = persisted.reflection ?? '';
+  const gratitude  = persisted.gratitude  ?? ['', '', ''];
+  const intention  = persisted.intention  ?? '';
+
+  const setReflection = (val) => setPersisted((p) => ({ ...p, reflection: val }));
+  const setGratitude  = (updater) => setPersisted((p) => ({
+    ...p,
+    gratitude: typeof updater === 'function' ? updater(p.gratitude ?? ['', '', '']) : updater,
+  }));
+  const setIntention  = (val) => setPersisted((p) => ({ ...p, intention: val }));
 
   const mindsetDetails = profile?.goalDetails?.mindset;
   const mindsetGoal = mindsetDetails?.[0];
@@ -220,6 +235,8 @@ export default function MindsetTab({ profile }) {
           <p className="text-xs text-gray-400 mb-3">One thing you want to focus on tomorrow.</p>
           <textarea
             rows={4}
+            value={intention}
+            onChange={(e) => setIntention(e.target.value)}
             placeholder="Tomorrow I want to..."
             className="w-full bg-white border border-purple-100 rounded-xl p-3 text-sm focus:outline-none focus:border-accent resize-none text-dark placeholder-gray-400"
           />

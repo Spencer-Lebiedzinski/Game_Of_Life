@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { CheckCircle, Circle, Timer, AlertCircle, Plus } from 'lucide-react';
+import { useTabData } from '../../hooks/useTabData';
 
 const priorityColors = {
   high:   'text-red-500 bg-red-50 border-red-200',
@@ -56,8 +57,8 @@ const PLANNING_CONTEXT = {
   reactive:  'Try starting each morning with just one question: what\'s the single most important task today?',
 };
 
-export default function SchoolTab({ profile }) {
-  const [assignments, setAssignments] = useState([]);
+export default function SchoolTab({ profile, userId }) {
+  const [assignments, setAssignments] = useTabData(userId, 'school', []);
   const [showAdd, setShowAdd]         = useState(false);
   const [newTitle, setNewTitle]       = useState('');
   const [newDue, setNewDue]           = useState('');

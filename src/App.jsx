@@ -11,6 +11,9 @@ import FinanceTab from './components/tabs/FinanceTab';
 import FloatingActionButton from './components/FloatingActionButton';
 import Onboarding from './components/Onboarding';
 import SettingsTab from './components/tabs/SettingsTab';
+import SleepTab from './components/tabs/SleepTab';
+import PlanningTab from './components/tabs/PlanningTab';
+import CustomGoalTab from './components/tabs/CustomGoalTab';
 import LoginScreen from './auth/LoginScreen.jsx';
 import { weekTasks } from './data/mockData';
 
@@ -55,7 +58,8 @@ export default function App() {
         if (!data) return;
         const theme = THEMES.find((t) => t.id === data.theme?.id) || THEMES[0];
         const goals = (data.goals ?? []).map((g) => BACKEND_TO_GOAL[g] ?? g);
-        setProfile({ ...data, goals, goalDetails: data.goal_details ?? {}, theme });
+        setProfile({ ...data, goals, goalDetails: data.goal_details ?? {},
+                     customGoals: data.custom_goals ?? [], theme });
         applyTheme(theme);
       })
       .catch(() => {});
@@ -86,6 +90,13 @@ export default function App() {
   const handleProfileUpdate = (updatedProfile) => {
     setProfile(updatedProfile);
     if (updatedProfile.theme) applyTheme(updatedProfile.theme);
+  };
+
+  const handleGoalCreated = (newCustomGoal) => {
+    setProfile((prev) => ({
+      ...prev,
+      customGoals: [...(prev.customGoals ?? []), newCustomGoal],
+    }));
   };
 
   // Called by any tab after awarding XP so the header updates live
@@ -129,17 +140,24 @@ export default function App() {
             userStats={userStats}
           />
         );
-      case 'school':   return <SchoolTab profile={profile} />;
-      case 'fitness':  return <FitnessTab profile={profile} />;
-      case 'mindset':  return <MindsetTab profile={profile} />;
+      case 'school':   return <SchoolTab profile={profile} userId={userId} />;
+      case 'fitness':  return <FitnessTab profile={profile} userId={userId} />;
+      case 'mindset':  return <MindsetTab profile={profile} userId={userId} />;
       case 'social':
         return <SocialTab theme={profile.theme} userName={profile.name} profile={profile} userId={userId} userStats={userStats} />;
       case 'analytics':
         return <AnalyticsTab userId={userId} />;
-      case 'finance':  return <FinanceTab profile={profile} />;
+      case 'finance':  return <FinanceTab profile={profile} userId={userId} />;
+      case 'sleep':    return <SleepTab profile={profile} userId={userId} />;
       case 'settings':
         return <SettingsTab profile={profile} userId={userId} onProfileUpdate={handleProfileUpdate} />;
-      default: return null;
+      case 'planning':
+        return <PlanningTab profile={profile} userId={userId} onGoalCreated={handleGoalCreated} />;
+      default: {
+        const customGoal = profile.customGoals?.find((g) => g.id === activeTab);
+        if (customGoal) return <CustomGoalTab goal={customGoal} userId={userId} theme={profile.theme} />;
+        return null;
+      }
     }
   };
 
@@ -152,6 +170,7 @@ export default function App() {
         theme={profile.theme}
         goals={profile.goals}
         userStats={userStats}
+        profile={profile}
       />
       <main className="pb-24">{renderContent()}</main>
       <FloatingActionButton onAdd={handleAdd} />

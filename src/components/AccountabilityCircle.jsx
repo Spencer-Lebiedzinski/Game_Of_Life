@@ -1,291 +1,225 @@
-import { useState } from 'react';
-import { Check, Send, Heart, Users, Target, Flame } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Flame, Zap, UserPlus, Search, X, Loader2, UserMinus } from 'lucide-react';
 
-const circleMembers = [
-  {
-    id: 1,
-    name: 'Jordan',
-    avatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Jordan',
-    streak: 20,
-    lastCheckin: '2h ago',
-    recentGoal: 'Finish 5 workouts this week',
-    progress: 80,
-    completedToday: true,
-    status: 'online',
-  },
-  {
-    id: 2,
-    name: 'Taylor',
-    avatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Taylor',
-    streak: 15,
-    lastCheckin: '5h ago',
-    recentGoal: 'Study 2 hours daily',
-    progress: 60,
-    completedToday: false,
-    status: 'away',
-  },
-  {
-    id: 3,
-    name: 'Morgan',
-    avatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Morgan',
-    streak: 8,
-    lastCheckin: '1d ago',
-    recentGoal: 'Sleep by 11pm',
-    progress: 45,
-    completedToday: false,
-    status: 'offline',
-  },
-];
+function activityLabel(lastDate) {
+  if (!lastDate) return 'Never active';
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  if (lastDate === today) return 'Active today ✓';
+  if (lastDate === yesterday) return 'Active yesterday';
+  return `Last active ${lastDate}`;
+}
 
-const initialFeed = [
-  { id: 1, user: 'Jordan', avatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Jordan', action: 'completed their workout 💪', time: '2h ago', likes: 3 },
-  { id: 2, user: 'Taylor', avatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Taylor', action: 'hit a 15-day streak 🔥', time: '5h ago', likes: 5 },
-  { id: 3, user: 'Morgan', avatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Morgan', action: 'shared goal: Sleep by 11pm 🌙', time: '1d ago', likes: 2 },
-];
+function activeToday(lastDate) {
+  if (!lastDate) return false;
+  return lastDate === new Date().toISOString().split('T')[0];
+}
 
-const statusColors = {
-  online: 'bg-green-400',
-  away: 'bg-yellow-400',
-  offline: 'bg-gray-300',
-};
+export default function AccountabilityCircle({ theme, userName, userId }) {
+  const [friends, setFriends]       = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [showAdd, setShowAdd]       = useState(false);
+  const [query, setQuery]           = useState('');
+  const [results, setResults]       = useState([]);
+  const [searching, setSearching]   = useState(false);
+  const [addedIds, setAddedIds]     = useState(new Set());
+  const [removing, setRemoving]     = useState(null);
 
-export default function AccountabilityCircle({ theme, userName }) {
-  const [feed, setFeed] = useState(initialFeed);
-  const [checkedIn, setCheckedIn] = useState(false);
-  const [nudgeSent, setNudgeSent] = useState({});
-  const [likedIds, setLikedIds] = useState([]);
-  const [checkInMsg, setCheckInMsg] = useState('');
-  const [showCheckIn, setShowCheckIn] = useState(false);
-  const [sharedGoal, setSharedGoal] = useState('');
-  const [showGoalInput, setShowGoalInput] = useState(false);
-
-  const accent = theme?.accent || '#2DD4BF';
+  const accent  = theme?.accent  || '#2DD4BF';
   const primary = theme?.primary || '#6EE7B7';
 
-  const handleCheckIn = () => {
-    if (!checkedIn) {
-      const msg = checkInMsg.trim() || 'Checked in for the day ✅';
-      setFeed(f => [{
-        id: Date.now(),
-        user: userName || 'You',
-        avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${userName || 'Alex'}`,
-        action: msg,
-        time: 'Just now',
-        likes: 0,
-        isMe: true,
-      }, ...f]);
-      setCheckedIn(true);
-      setShowCheckIn(false);
-      setCheckInMsg('');
-    }
+  // Load friends on mount
+  useEffect(() => {
+    if (!userId || userId === 'frontend-user') { setLoading(false); return; }
+    fetch(`http://localhost:8000/api/social/friends/${userId}`)
+      .then((r) => r.json())
+      .then((d) => setFriends(d.friends ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  // Search with debounce
+  useEffect(() => {
+    if (!query.trim()) { setResults([]); return; }
+    const t = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const r = await fetch(
+          `http://localhost:8000/api/social/search?q=${encodeURIComponent(query)}&user_id=${userId}`
+        );
+        const d = await r.json();
+        setResults(d.results ?? []);
+      } catch { setResults([]); }
+      finally { setSearching(false); }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [query, userId]);
+
+  const handleAdd = async (friend) => {
+    await fetch('http://localhost:8000/api/social/friends/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, friend_id: friend.user_id }),
+    }).catch(() => {});
+    setAddedIds((s) => new Set([...s, friend.user_id]));
+    setResults((r) => r.filter((u) => u.user_id !== friend.user_id));
+    // Refresh friends list
+    fetch(`http://localhost:8000/api/social/friends/${userId}`)
+      .then((r) => r.json())
+      .then((d) => setFriends(d.friends ?? []))
+      .catch(() => {});
   };
 
-  const handleNudge = (memberId, memberName) => {
-    setNudgeSent(n => ({ ...n, [memberId]: true }));
-    setTimeout(() => setNudgeSent(n => ({ ...n, [memberId]: false })), 3000);
-  };
-
-  const handleLike = (id) => {
-    if (likedIds.includes(id)) return;
-    setLikedIds(ids => [...ids, id]);
-    setFeed(f => f.map(item => item.id === id ? { ...item, likes: item.likes + 1 } : item));
-  };
-
-  const handleShareGoal = () => {
-    if (!sharedGoal.trim()) return;
-    setFeed(f => [{
-      id: Date.now(),
-      user: userName || 'You',
-      avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${userName || 'Alex'}`,
-      action: `set a new goal: ${sharedGoal} 🎯`,
-      time: 'Just now',
-      likes: 0,
-      isMe: true,
-    }, ...f]);
-    setSharedGoal('');
-    setShowGoalInput(false);
+  const handleRemove = async (friendId) => {
+    setRemoving(friendId);
+    await fetch(
+      `http://localhost:8000/api/social/friends/remove?user_id=${userId}&friend_id=${friendId}`,
+      { method: 'DELETE' }
+    ).catch(() => {});
+    setFriends((f) => f.filter((fr) => fr.user_id !== friendId));
+    setRemoving(null);
   };
 
   return (
     <div className="space-y-4">
-      {/* Header card */}
-      <div
-        className="rounded-2xl p-5 text-white relative overflow-hidden"
-        style={{ background: `linear-gradient(135deg, #0F172A, #1E293B)` }}
-      >
-        <div
-          className="absolute -bottom-8 -right-8 w-32 h-32 rounded-full opacity-20 blur-2xl pointer-events-none"
-          style={{ backgroundColor: accent }}
-        />
-        <div className="flex items-center gap-2 mb-3">
-          <Users size={18} style={{ color: accent }} />
-          <p className="font-bold text-sm">Accountability Circle</p>
-          <span
-            className="text-xs px-2 py-0.5 rounded-full font-semibold"
-            style={{ backgroundColor: accent + '30', color: accent }}
-          >
-            BASE44
-          </span>
-        </div>
-        <p className="text-gray-400 text-xs mb-4">Private group — no feeds, just real support</p>
-
-        {/* Check-in button */}
-        {!checkedIn ? (
-          <div>
-            {showCheckIn ? (
-              <div className="flex gap-2">
-                <input
-                  autoFocus
-                  type="text"
-                  value={checkInMsg}
-                  onChange={e => setCheckInMsg(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleCheckIn()}
-                  placeholder="What did you accomplish? (optional)"
-                  className="flex-1 bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-white/40"
-                />
-                <button
-                  onClick={handleCheckIn}
-                  className="px-3 py-2 rounded-xl text-xs font-bold text-dark"
-                  style={{ backgroundColor: accent }}
-                >
-                  <Send size={13} />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowCheckIn(true)}
-                className="w-full py-2.5 rounded-xl font-semibold text-sm text-dark hover:opacity-90 transition-all"
-                style={{ background: `linear-gradient(135deg, ${primary}, ${accent})` }}
-              >
-                ✅ Check In Today
-              </button>
-            )}
-          </div>
-        ) : (
-          <div
-            className="text-center py-2.5 rounded-xl text-sm font-medium"
-            style={{ backgroundColor: accent + '30', color: accent }}
-          >
-            ✅ Checked in! Your circle can see your progress.
-          </div>
-        )}
-      </div>
-
-      {/* Circle members */}
+      {/* Add friend panel */}
       <div className="bg-white rounded-2xl shadow-sm p-5">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-dark text-sm">Your Circle</h3>
-          <span className="text-xs text-gray-400">{circleMembers.length} friends</span>
-        </div>
-        <div className="space-y-3">
-          {circleMembers.map(member => (
-            <div key={member.id} className="flex items-center gap-3">
-              {/* Avatar + status */}
-              <div className="relative shrink-0">
-                <img src={member.avatar} alt={member.name} className="w-11 h-11 rounded-full bg-gray-100" />
-                <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${statusColors[member.status]}`} />
-              </div>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-sm text-dark">{member.name}</p>
-                  <div className="flex items-center gap-0.5">
-                    <Flame size={11} className="text-orange-400" />
-                    <span className="text-xs text-orange-500 font-medium">{member.streak}</span>
-                  </div>
-                  {member.completedToday && (
-                    <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">done ✓</span>
-                  )}
-                </div>
-                <p className="text-xs text-gray-400 truncate">{member.recentGoal}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${member.progress}%`, backgroundColor: accent }}
-                    />
-                  </div>
-                  <span className="text-xs text-gray-400 shrink-0">{member.progress}%</span>
-                </div>
-              </div>
-
-              {/* Nudge */}
-              <button
-                onClick={() => handleNudge(member.id, member.name)}
-                className={`shrink-0 text-xs px-3 py-1.5 rounded-full font-medium transition-all ${
-                  nudgeSent[member.id]
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-gray-100 text-gray-600 hover:bg-yellow-50 hover:text-yellow-700'
-                }`}
-              >
-                {nudgeSent[member.id] ? 'Sent! 👊' : '👊 Nudge'}
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Activity feed */}
-      <div className="bg-white rounded-2xl shadow-sm p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-dark text-sm">Circle Activity</h3>
           <button
-            onClick={() => setShowGoalInput(!showGoalInput)}
-            className="text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
+            onClick={() => { setShowAdd((v) => !v); setQuery(''); setResults([]); }}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
             style={{ backgroundColor: accent + '20', color: accent }}
           >
-            <Target size={11} className="inline mr-1" />
-            Share Goal
+            {showAdd ? <X size={12} /> : <UserPlus size={12} />}
+            {showAdd ? 'Cancel' : 'Add Friend'}
           </button>
         </div>
 
-        {showGoalInput && (
-          <div className="flex gap-2 mb-3">
-            <input
-              autoFocus
-              type="text"
-              value={sharedGoal}
-              onChange={e => setSharedGoal(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleShareGoal()}
-              placeholder="Share a goal with your circle..."
-              className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-accent"
-            />
-            <button
-              onClick={handleShareGoal}
-              className="px-3 py-2 rounded-xl text-xs font-bold text-white"
-              style={{ backgroundColor: accent }}
-            >
-              <Send size={12} />
-            </button>
+        {showAdd && (
+          <div className="mb-4">
+            <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 mb-2 focus-within:border-accent transition-colors">
+              <Search size={14} className="text-gray-400 shrink-0" />
+              <input
+                autoFocus
+                type="text"
+                placeholder="Search by name..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="flex-1 text-sm focus:outline-none text-dark placeholder-gray-400"
+              />
+              {searching && <Loader2 size={14} className="animate-spin text-gray-400 shrink-0" />}
+            </div>
+
+            {results.length > 0 && (
+              <div className="space-y-1">
+                {results.map((u) => (
+                  <div key={u.user_id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50">
+                    <img
+                      src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${u.name}`}
+                      alt={u.name}
+                      className="w-8 h-8 rounded-full bg-gray-100 shrink-0"
+                    />
+                    <p className="text-sm text-dark flex-1">{u.name}</p>
+                    {addedIds.has(u.user_id) ? (
+                      <span className="text-xs text-green-600 font-medium">Added ✓</span>
+                    ) : (
+                      <button
+                        onClick={() => handleAdd(u)}
+                        className="text-xs px-3 py-1 rounded-full font-medium text-white"
+                        style={{ backgroundColor: accent }}
+                      >
+                        Add
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {query.trim() && !searching && results.length === 0 && (
+              <p className="text-xs text-gray-400 text-center py-2">No users found matching "{query}"</p>
+            )}
           </div>
         )}
 
-        <div className="space-y-3">
-          {feed.map(item => (
-            <div key={item.id} className="flex items-start gap-3">
-              <img src={item.avatar} alt={item.user} className="w-9 h-9 rounded-full bg-gray-100 shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-dark">
-                  <span className="font-semibold">{item.user}</span>{' '}
-                  <span className="text-gray-600">{item.action}</span>
-                </p>
-                <div className="flex items-center gap-3 mt-1">
-                  <span className="text-xs text-gray-400">{item.time}</span>
-                  <button
-                    onClick={() => handleLike(item.id)}
-                    className={`flex items-center gap-1 text-xs transition-colors ${
-                      likedIds.includes(item.id) ? 'text-red-500' : 'text-gray-400 hover:text-red-400'
+        {/* Friends list */}
+        {loading ? (
+          <div className="flex justify-center py-6">
+            <Loader2 size={20} className="animate-spin text-gray-300" />
+          </div>
+        ) : friends.length === 0 ? (
+          <div className="text-center py-6">
+            <p className="text-sm text-gray-400">No friends yet.</p>
+            <p className="text-xs text-gray-300 mt-1">Search above to add people to your circle.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {friends.map((f) => (
+              <div key={f.user_id} className="flex items-center gap-3">
+                <div className="relative shrink-0">
+                  <img
+                    src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${f.name}`}
+                    alt={f.name}
+                    className="w-11 h-11 rounded-full bg-gray-100"
+                  />
+                  <div
+                    className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
+                      activeToday(f.last_activity_date) ? 'bg-green-400' : 'bg-gray-300'
                     }`}
-                  >
-                    <Heart size={11} fill={likedIds.includes(item.id) ? 'currentColor' : 'none'} />
-                    {item.likes}
-                  </button>
+                  />
                 </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-sm text-dark truncate">{f.name}</p>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <Flame size={11} className="text-orange-400" />
+                      <span className="text-xs text-orange-500 font-medium">{f.streak}</span>
+                    </div>
+                    {activeToday(f.last_activity_date) && (
+                      <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full shrink-0">done ✓</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-0.5">
+                      <Zap size={10} className="text-yellow-400" />
+                      <span className="text-xs text-gray-500">Lv {f.level}</span>
+                    </div>
+                    <span className="text-xs text-gray-400">{f.xp.toLocaleString()} XP</span>
+                    <span className="text-xs text-gray-300">·</span>
+                    <span className="text-xs text-gray-400">{activityLabel(f.last_activity_date)}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleRemove(f.user_id)}
+                  disabled={removing === f.user_id}
+                  className="shrink-0 p-1.5 rounded-full text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors disabled:opacity-40"
+                  title="Remove friend"
+                >
+                  {removing === f.user_id
+                    ? <Loader2 size={14} className="animate-spin" />
+                    : <UserMinus size={14} />}
+                </button>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* How it works */}
+      <div
+        className="rounded-2xl p-5 text-white"
+        style={{ background: 'linear-gradient(135deg, #0F172A, #1E293B)' }}
+      >
+        <p className="font-bold text-sm mb-1" style={{ color: accent }}>How the circle works</p>
+        <ul className="text-xs text-gray-400 space-y-1 mt-2">
+          <li>• Add friends by searching their name above</li>
+          <li>• Green dot = they've been active today</li>
+          <li>• Friends appear on your Friends leaderboard</li>
+          <li>• XP, level & streak update in real time</li>
+        </ul>
       </div>
     </div>
   );

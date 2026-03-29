@@ -8,6 +8,9 @@ from routes.checkin import router as checkin_router
 from routes.suggestions import router as suggestions_router
 from routes.quests import router as quests_router
 from routes.stats import router as stats_router
+from routes.custom_goals import router as custom_goals_router
+from routes.tab_data import router as tab_data_router
+from routes.social import router as social_router
 
 app = FastAPI(title="Game of Life API")
 
@@ -24,3 +27,6 @@ app.include_router(checkin_router, prefix="/api")
 app.include_router(suggestions_router, prefix="/api")
 app.include_router(quests_router, prefix="/api")
 app.include_router(stats_router, prefix="/api")
+app.include_router(custom_goals_router, prefix="/api")
+app.include_router(tab_data_router, prefix="/api")
+app.include_router(social_router, prefix="/api")

@@ -23,8 +23,11 @@ export default function SocialTab({ theme, userName, profile, userId, userStats 
   const socialGoal    = socialDetails?.[0];
   const barrier       = socialDetails?.[2];
   const goalPlan      = SOCIAL_GOALS[socialGoal] ?? null;
-  const [view, setView] = useState('leaderboard');
-  const [leaderboard, setLeaderboard] = useState([]);
+  const [view, setView]           = useState('leaderboard');
+  const [lbFilter, setLbFilter]   = useState('global'); // 'global' | 'friends'
+  const [leaderboard, setLeaderboard]       = useState([]);
+  const [friendsBoard, setFriendsBoard]     = useState([]);
+  const [boardLoading, setBoardLoading]     = useState(false);
 
   useEffect(() => {
     fetch('http://localhost:8000/api/stats/leaderboard/all')
@@ -33,8 +36,18 @@ export default function SocialTab({ theme, userName, profile, userId, userStats 
       .catch(() => {});
   }, []);
 
-  // Merge current user into leaderboard if not already present
-  const board = (() => {
+  useEffect(() => {
+    if (!userId || userId === 'frontend-user') return;
+    setBoardLoading(true);
+    fetch(`http://localhost:8000/api/social/friends-leaderboard/${userId}`)
+      .then((r) => r.json())
+      .then((data) => setFriendsBoard(data.leaderboard ?? []))
+      .catch(() => {})
+      .finally(() => setBoardLoading(false));
+  }, [userId]);
+
+  // Merge current user into global leaderboard if not already present
+  const globalBoard = (() => {
     if (!userId || !userStats) return leaderboard;
     const exists = leaderboard.some((e) => e.user_id === userId);
     if (exists) return leaderboard;
@@ -44,7 +57,7 @@ export default function SocialTab({ theme, userName, profile, userId, userStats 
     ].sort((a, b) => b.xp - a.xp);
   })();
 
-  const sorted = board;
+  const sorted = lbFilter === 'friends' ? friendsBoard : globalBoard;
 
   return (
     <div className="p-4 max-w-7xl mx-auto">
@@ -92,6 +105,27 @@ export default function SocialTab({ theme, userName, profile, userId, userStats 
 
       {view === 'leaderboard' ? (
         <>
+          {/* Global / Friends filter */}
+          <div className="flex bg-gray-100 rounded-xl p-1 gap-1 mb-4 w-fit">
+            {['global', 'friends'].map((f) => (
+              <button
+                key={f}
+                onClick={() => setLbFilter(f)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all capitalize ${
+                  lbFilter === f ? 'bg-white shadow-sm text-dark' : 'text-gray-500'
+                }`}
+              >
+                {f === 'global' ? '🌍 Global' : '👥 Friends'}
+              </button>
+            ))}
+          </div>
+
+          {lbFilter === 'friends' && friendsBoard.length <= 1 && !boardLoading && (
+            <div className="bg-white rounded-2xl shadow-sm p-6 mb-4 text-center">
+              <p className="text-sm text-gray-400">Add friends from the Circle tab to compete here.</p>
+            </div>
+          )}
+
           {/* Top 3 podium */}
           {sorted.length >= 3 && (
             <div className="bg-white rounded-2xl shadow-sm p-5 mb-4">
@@ -185,7 +219,7 @@ export default function SocialTab({ theme, userName, profile, userId, userStats 
           </div>
         </>
       ) : (
-        <AccountabilityCircle theme={theme} userName={userName} />
+        <AccountabilityCircle theme={theme} userName={userName} userId={userId} />
       )}
     </div>
   );

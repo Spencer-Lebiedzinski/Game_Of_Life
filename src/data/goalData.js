@@ -1,12 +1,12 @@
 // Shared goal config used by both Onboarding and Settings
 
 export const GOAL_OPTIONS = [
-  { id: 'school',  label: 'Crush School',  icon: '📚', desc: 'Assignments, exams & study goals' },
-  { id: 'fitness', label: 'Get Fit',        icon: '💪', desc: 'Workouts, steps & health habits' },
-  { id: 'mindset', label: 'Build Mindset',  icon: '🧠', desc: 'Journaling, mood & gratitude' },
-  { id: 'social',  label: 'Grow Socially',  icon: '🤝', desc: 'Friendships & connections' },
-  { id: 'finance', label: 'Manage Money',   icon: '💰', desc: 'Budget, spending & savings' },
-  { id: 'sleep',   label: 'Sleep Better',   icon: '😴', desc: 'Track & improve sleep quality' },
+  { id: 'school',  label: 'Crush School',  shortLabel: 'School',  icon: '📚', desc: 'Assignments, exams & study goals' },
+  { id: 'fitness', label: 'Get Fit',        shortLabel: 'Fitness', icon: '💪', desc: 'Workouts, steps & health habits' },
+  { id: 'mindset', label: 'Build Mindset',  shortLabel: 'Mindset', icon: '🧠', desc: 'Journaling, mood & gratitude' },
+  { id: 'social',  label: 'Grow Socially',  shortLabel: 'Social',  icon: '🤝', desc: 'Friendships & connections' },
+  { id: 'finance', label: 'Manage Money',   shortLabel: 'Finance', icon: '💰', desc: 'Budget, spending & savings' },
+  { id: 'sleep',   label: 'Sleep Better',   shortLabel: 'Sleep',   icon: '😴', desc: 'Track & improve sleep quality' },
 ];
 
 export const CLARIFY_QUESTIONS = {
