@@ -28,9 +28,15 @@ export default function App() {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth0();
   const [profile, setProfile] = useState(null);
   const [userStats, setUserStats] = useState(null);
+  const [leaderboardRefreshKey, setLeaderboardRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [tasks, setTasks] = useState(weekTasks);
   const [selectedDay, setSelectedDay] = useState(getTodayKey());
+  const [canvasConnected, setCanvasConnected] = useState(false);
+  const [canvasDashboard, setCanvasDashboard] = useState(null);
+  const [canvasLoading, setCanvasLoading] = useState(false);
+  const [canvasMessage, setCanvasMessage] = useState('');
+  const [canvasError, setCanvasError] = useState('');
 
   const userId = user?.sub || 'frontend-user';
 
@@ -61,6 +67,22 @@ export default function App() {
         setProfile({ ...data, goals, goalDetails: data.goal_details ?? {},
                      customGoals: data.custom_goals ?? [], theme });
         applyTheme(theme);
+      })
+      .catch(() => {});
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId || userId === 'frontend-user') return;
+
+    fetch('http://localhost:8000/api/canvas/status', {
+      headers: { 'X-User-Id': userId },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        setCanvasConnected(Boolean(data?.connected));
+        if (!data?.connected) {
+          setCanvasDashboard(null);
+        }
       })
       .catch(() => {});
   }, [userId]);
@@ -99,12 +121,59 @@ export default function App() {
     }));
   };
 
+  const refreshCanvasDashboard = async ({ showLoadingMessage = true } = {}) => {
+    if (!userId || userId === 'frontend-user') return null;
+
+    setCanvasLoading(true);
+    setCanvasError('');
+    if (showLoadingMessage) {
+      setCanvasMessage('Refreshing your class data. This may take a while.');
+    }
+
+    try {
+      const response = await fetch('http://localhost:8000/api/canvas/dashboard', {
+        headers: { 'X-User-Id': userId },
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.detail || 'Could not refresh Canvas data.');
+      }
+
+      setCanvasDashboard(data);
+      setCanvasConnected(true);
+      setCanvasMessage(`Last refreshed at ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`);
+      return data;
+    } catch (error) {
+      setCanvasError(error.message || 'Could not refresh Canvas data.');
+      return null;
+    } finally {
+      setCanvasLoading(false);
+    }
+  };
+
+  const handleCanvasConnected = async () => {
+    setCanvasConnected(true);
+    await refreshCanvasDashboard();
+  };
+
+  const handleCanvasDisconnected = () => {
+    setCanvasConnected(false);
+    setCanvasDashboard(null);
+    setCanvasLoading(false);
+    setCanvasError('');
+    setCanvasMessage('');
+  };
+
   // Called by any tab after awarding XP so the header updates live
   const refreshStats = () => {
     if (!userId || userId === 'frontend-user') return;
     fetch(`http://localhost:8000/api/stats/${userId}`)
       .then((r) => r.json())
-      .then(setUserStats)
+      .then((data) => {
+        setUserStats(data);
+        setLeaderboardRefreshKey((current) => current + 1);
+      })
       .catch(() => {});
   };
 
@@ -138,19 +207,40 @@ export default function App() {
             userName={profile.name}
             theme={profile.theme}
             userStats={userStats}
+            userId={userId}
+            onXpAwarded={refreshStats}
+            leaderboardRefreshKey={leaderboardRefreshKey}
+            canvasConnected={canvasConnected}
+            canvasDashboard={canvasDashboard}
+            canvasLoading={canvasLoading}
+            canvasMessage={canvasMessage}
+            canvasError={canvasError}
+            onRefreshCanvas={refreshCanvasDashboard}
           />
         );
       case 'school':   return <SchoolTab profile={profile} userId={userId} />;
       case 'fitness':  return <FitnessTab profile={profile} userId={userId} />;
       case 'mindset':  return <MindsetTab profile={profile} userId={userId} />;
       case 'social':
-        return <SocialTab theme={profile.theme} userName={profile.name} profile={profile} userId={userId} userStats={userStats} />;
+        return <SocialTab theme={profile.theme} userName={profile.name} profile={profile} userId={userId} userStats={userStats} refreshKey={leaderboardRefreshKey} />;
       case 'analytics':
         return <AnalyticsTab userId={userId} />;
       case 'finance':  return <FinanceTab profile={profile} userId={userId} />;
       case 'sleep':    return <SleepTab profile={profile} userId={userId} />;
       case 'settings':
-        return <SettingsTab profile={profile} userId={userId} onProfileUpdate={handleProfileUpdate} />;
+        return (
+          <SettingsTab
+            profile={profile}
+            userId={userId}
+            onProfileUpdate={handleProfileUpdate}
+            canvasConnected={canvasConnected}
+            canvasLoading={canvasLoading}
+            canvasMessage={canvasMessage}
+            canvasError={canvasError}
+            onCanvasConnected={handleCanvasConnected}
+            onCanvasDisconnected={handleCanvasDisconnected}
+          />
+        );
       case 'planning':
         return <PlanningTab profile={profile} userId={userId} onGoalCreated={handleGoalCreated} />;
       default: {
