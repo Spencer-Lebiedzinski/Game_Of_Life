@@ -22,7 +22,7 @@ export default function PlanningTab({ profile, userId, onGoalCreated }) {
     setError('');
     setView('loading');
     try {
-      const res = await fetch('http://localhost:8000/api/goals/custom/research', {
+      const res = await fetch('http://localhost:8001/api/goals/custom/research', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId, goal_text: goalText.trim() }),
@@ -65,7 +65,7 @@ export default function PlanningTab({ profile, userId, onGoalCreated }) {
   const handleFinish = async () => {
     setView('loading');
     try {
-      await fetch('http://localhost:8000/api/goals/custom/answers', {
+      await fetch('http://localhost:8001/api/goals/custom/answers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

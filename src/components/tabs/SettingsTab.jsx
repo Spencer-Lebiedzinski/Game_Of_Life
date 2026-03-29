@@ -132,7 +132,7 @@ export default function SettingsTab({
     setCanvasStatusMessage('');
 
     try {
-      const response = await fetch('http://localhost:8000/api/canvas/connect-token', {
+      const response = await fetch('http://localhost:8001/api/canvas/connect-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId, token }),
@@ -160,7 +160,7 @@ export default function SettingsTab({
     setCanvasStatusMessage('');
 
     try {
-      const response = await fetch('http://localhost:8000/api/canvas/disconnect-token', {
+      const response = await fetch('http://localhost:8001/api/canvas/disconnect-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId }),

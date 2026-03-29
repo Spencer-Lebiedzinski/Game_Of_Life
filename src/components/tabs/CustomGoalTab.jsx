@@ -13,7 +13,7 @@ export default function CustomGoalTab({ goal, userId, theme }) {
     setError('');
     try {
       const res = await fetch(
-        `http://localhost:8000/api/goals/custom/insight/${goal.id}?user_id=${userId}`
+        `http://localhost:8001/api/goals/custom/insight/${goal.id}?user_id=${userId}`
       );
       if (!res.ok) throw new Error();
       setInsight(await res.json());

@@ -95,7 +95,7 @@ export default function App() {
 
   useEffect(() => {
     if (!userId || userId === 'frontend-user') return;
-    fetch('http://localhost:8000/api/canvas/status', {
+    fetch('http://localhost:8001/api/canvas/status', {
       headers: { 'X-User-Id': userId },
     })
       .then((r) => (r.ok ? r.json() : null))
@@ -150,7 +150,7 @@ export default function App() {
     setCanvasError('');
     if (showLoadingMessage) setCanvasMessage('Refreshing your class data. This may take a while.');
     try {
-      const response = await fetch('http://localhost:8000/api/canvas/dashboard', {
+      const response = await fetch('http://localhost:8001/api/canvas/dashboard', {
         headers: { 'X-User-Id': userId },
       });
       const data = await response.json().catch(() => ({}));
