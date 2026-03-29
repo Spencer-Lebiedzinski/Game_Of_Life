@@ -310,7 +310,7 @@ function SessionReport({ report, theme, onClose }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Main StudyMode component
 // ─────────────────────────────────────────────────────────────────────────────
-export default function StudyMode({ theme }) {
+export default function StudyMode({ theme, userId, onXpAwarded }) {
   const [active, setActive]           = useState(false);
   const [focusLevel, setFocusLevel]   = useState(75);
   const [seconds, setSeconds]         = useState(0);
@@ -613,6 +613,28 @@ export default function StudyMode({ theme }) {
     }
   };
 
+  const persistSessionXp = async (amount) => {
+    if (!userId || userId === 'frontend-user' || amount <= 0) return;
+    try {
+      const response = await fetch('http://localhost:8000/api/stats/xp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          amount,
+          source: 'study_mode',
+        }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.detail || 'Failed to award study XP');
+      }
+      if (onXpAwarded) onXpAwarded();
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const stopSession = () => {
     clearInterval(timerRef.current);
     clearInterval(focusRef.current);
@@ -640,6 +662,7 @@ export default function StudyMode({ theme }) {
         bpm: bpm ?? '--', time: endTime,
       }, ...h.slice(0, 4)]);
     }
+    void persistSessionXp(sessionXP);
     setSeconds(0);
   };
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Query
@@ -40,6 +41,46 @@ def _safe_course_summary(course: dict[str, Any]) -> dict[str, Any]:
         "term": course.get("term"),
         "total_scores": course.get("total_scores"),
     }
+
+
+def _parse_canvas_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _enrollment_rank(enrollment: dict[str, Any]) -> tuple[int, int]:
+    enrollment_type = (enrollment.get("type") or "").lower()
+    state = (enrollment.get("enrollment_state") or "").lower()
+    type_rank = 0 if "student" in enrollment_type else 1
+    state_rank = 0 if state == "active" else 1
+    return (type_rank, state_rank)
+
+
+def _pick_best_enrollment(current: dict[str, Any] | None, candidate: dict[str, Any]) -> dict[str, Any]:
+    if current is None:
+        return candidate
+
+    candidate_grade = candidate.get("grades") or {}
+    current_grade = current.get("grades") or {}
+
+    if _enrollment_rank(candidate) < _enrollment_rank(current):
+        return candidate
+
+    candidate_has_grade = any(
+        candidate_grade.get(key) is not None for key in ("current_score", "final_score", "current_grade", "final_grade")
+    )
+    current_has_grade = any(
+        current_grade.get(key) is not None for key in ("current_score", "final_score", "current_grade", "final_grade")
+    )
+
+    if candidate_has_grade and not current_has_grade:
+        return candidate
+
+    return current
 
 
 @router.get("/login")
@@ -189,9 +230,14 @@ def get_dashboard(x_user_id: str | None = Header(default=None, alias="X-User-Id"
     for enrollment in enrollments:
         course_id = enrollment.get("course_id")
         if course_id is not None:
-            enrollments_by_course[str(course_id)] = enrollment
+            key = str(course_id)
+            enrollments_by_course[key] = _pick_best_enrollment(
+                enrollments_by_course.get(key),
+                enrollment,
+            )
 
     dashboard_courses: list[dict[str, Any]] = []
+    now = datetime.now(timezone.utc)
 
     for course in courses:
         course_id = str(course.get("id"))
@@ -220,13 +266,15 @@ def get_dashboard(x_user_id: str | None = Header(default=None, alias="X-User-Id"
         for assignment in assignments:
             assignment_id = str(assignment.get("id"))
             submission = submissions_by_assignment_id.get(assignment_id)
+            due_at = assignment.get("due_at")
+            due_at_dt = _parse_canvas_datetime(due_at)
 
             workflow_state = submission.get("workflow_state") if submission else None
             submitted_at = submission.get("submitted_at") if submission else None
             score = submission.get("score") if submission else None
             grade = submission.get("grade") if submission else None
             late = bool(submission.get("late")) if submission else False
-            missing = workflow_state == "unsubmitted"
+            missing = workflow_state == "unsubmitted" and due_at_dt is not None and due_at_dt < now
 
             if missing:
                 missing_count += 1
@@ -237,7 +285,7 @@ def get_dashboard(x_user_id: str | None = Header(default=None, alias="X-User-Id"
                 {
                     "id": assignment.get("id"),
                     "name": assignment.get("name"),
-                    "due_at": assignment.get("due_at"),
+                    "due_at": due_at,
                     "points_possible": assignment.get("points_possible"),
                     "html_url": assignment.get("html_url"),
                     "submission_types": assignment.get("submission_types"),
@@ -257,7 +305,12 @@ def get_dashboard(x_user_id: str | None = Header(default=None, alias="X-User-Id"
             key=lambda a: (a["due_at"] is None, a["due_at"] or "9999-12-31T23:59:59Z")
         )
 
-        next_assignments = enriched_assignments[:3]
+        next_assignments = [
+            assignment
+            for assignment in enriched_assignments
+            if assignment["due_at"] and _parse_canvas_datetime(assignment["due_at"]) is not None
+            and _parse_canvas_datetime(assignment["due_at"]) >= now
+        ][:3]
 
         grades = enrollment.get("grades", {}) if enrollment else {}
 

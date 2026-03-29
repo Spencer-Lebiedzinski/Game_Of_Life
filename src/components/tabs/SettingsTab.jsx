@@ -1,11 +1,25 @@
 import { useState } from 'react';
-import { Check, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Check, ChevronRight, ChevronLeft, Link2, Loader2, Unplug } from 'lucide-react';
 import { GOAL_OPTIONS, CLARIFY_QUESTIONS, THEMES } from '../../data/goalData';
+import ProfileConnections from '../ProfileConnections';
 
-export default function SettingsTab({ profile, userId, onProfileUpdate }) {
+export default function SettingsTab({
+  profile,
+  userId,
+  onProfileUpdate,
+  canvasConnected,
+  canvasLoading,
+  canvasMessage,
+  canvasError,
+  onCanvasConnected,
+  onCanvasDisconnected,
+}) {
   const [activeGoals, setActiveGoals] = useState(profile?.goals ?? []);
   const [goalDetails, setGoalDetails] = useState(profile?.goalDetails ?? {});
   const [selectedTheme, setSelectedTheme] = useState(profile?.theme?.id ?? 'mint');
+  const [canvasToken, setCanvasToken] = useState('');
+  const [canvasSaving, setCanvasSaving] = useState(false);
+  const [canvasStatusMessage, setCanvasStatusMessage] = useState('');
 
   // Mini clarify flow state
   const [pendingGoal, setPendingGoal] = useState(null);
@@ -99,6 +113,63 @@ export default function SettingsTab({ profile, userId, onProfileUpdate }) {
     if (!t) return;
     setSelectedTheme(themeId);
     persist({ theme: t });
+  }
+
+  async function handleConnectCanvas() {
+    const token = canvasToken.trim();
+    if (!token || !userId) return;
+
+    setCanvasSaving(true);
+    setCanvasStatusMessage('');
+
+    try {
+      const response = await fetch('http://localhost:8000/api/canvas/connect-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, token }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.detail || 'Could not save Canvas token.');
+      }
+
+      setCanvasToken('');
+      setCanvasStatusMessage(data?.message || 'Canvas token saved.');
+      await onCanvasConnected?.();
+    } catch (error) {
+      setCanvasStatusMessage(error.message || 'Could not save Canvas token.');
+    } finally {
+      setCanvasSaving(false);
+    }
+  }
+
+  async function handleDisconnectCanvas() {
+    if (!userId) return;
+
+    setCanvasSaving(true);
+    setCanvasStatusMessage('');
+
+    try {
+      const response = await fetch('http://localhost:8000/api/canvas/disconnect-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.detail || 'Could not disconnect Canvas token.');
+      }
+
+      setCanvasToken('');
+      setCanvasStatusMessage(data?.message || 'Canvas disconnected.');
+      onCanvasDisconnected?.();
+    } catch (error) {
+      setCanvasStatusMessage(error.message || 'Could not disconnect Canvas token.');
+    } finally {
+      setCanvasSaving(false);
+    }
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -257,7 +328,65 @@ export default function SettingsTab({ profile, userId, onProfileUpdate }) {
         </div>
       </section>
 
-      {/* ── Account ── */}
+      <section className="bg-white rounded-2xl shadow-sm p-5 mb-4">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 className="font-semibold text-dark mb-1">Canvas</h2>
+            <p className="text-xs text-gray-400">
+              Save your Canvas token here, then refresh class data only when you want to.
+            </p>
+          </div>
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${canvasConnected ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+            {canvasConnected ? 'Connected' : 'Not connected'}
+          </span>
+        </div>
+
+        <div className="space-y-3">
+          <input
+            type="password"
+            value={canvasToken}
+            onChange={(e) => setCanvasToken(e.target.value)}
+            placeholder="Paste Canvas access token"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-accent"
+          />
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleConnectCanvas}
+              disabled={!canvasToken.trim() || canvasSaving}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+              style={{ backgroundColor: accent }}
+            >
+              {(canvasSaving || canvasLoading) ? <Loader2 size={14} className="animate-spin" /> : <Link2 size={14} />}
+              Save Token
+            </button>
+
+            <button
+              onClick={handleDisconnectCanvas}
+              disabled={!canvasConnected || canvasSaving}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-gray-100 text-gray-700 disabled:opacity-50"
+            >
+              <Unplug size={14} />
+              Disconnect
+            </button>
+          </div>
+
+          {(canvasStatusMessage || canvasMessage || canvasError) && (
+            <div className={`rounded-xl px-3 py-2 text-sm ${
+              canvasError || canvasStatusMessage.toLowerCase().includes('could not') || canvasStatusMessage.toLowerCase().includes('invalid')
+                ? 'bg-red-50 text-red-700'
+                : 'bg-blue-50 text-blue-700'
+            }`}>
+              {canvasError || canvasStatusMessage || canvasMessage}
+            </div>
+          )}
+
+          <p className="text-xs text-gray-400">
+            Refreshing class data can take a while because each class is checked separately.
+          </p>
+        </div>
+      </section>
+
       <section className="bg-white rounded-2xl shadow-sm p-5">
         <h2 className="font-semibold text-dark mb-4">Account</h2>
         <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl mb-2">
@@ -273,6 +402,8 @@ export default function SettingsTab({ profile, userId, onProfileUpdate }) {
           To sign out, use the logout button in the top bar.
         </p>
       </section>
+
+      <ProfileConnections userId={userId} theme={profile?.theme} />
     </div>
   );
 }
