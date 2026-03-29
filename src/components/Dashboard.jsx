@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import WeeklyCalendar from './WeeklyCalendar';
 import TaskList from './TaskList';
 import LifeScore from './LifeScore';
 import VoiceCoach from './VoiceCoach';
 import StudyMode from './StudyMode';
+import { Star } from 'lucide-react';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-export default function Dashboard({ tasks, setTasks, selectedDay, setSelectedDay, userName, theme, userStats }) {
+export default function Dashboard({ tasks, setTasks, selectedDay, setSelectedDay, userName, theme, userStats, taskPoints = 0, onPointsChange }) {
+  const [pointsToast, setPointsToast] = useState(null);
   const today = new Date();
   const dayOfWeek = today.getDay();
   const todayName = DAYS[dayOfWeek === 0 ? 6 : dayOfWeek - 1];
@@ -26,18 +29,37 @@ export default function Dashboard({ tasks, setTasks, selectedDay, setSelectedDay
   const todayTasks = tasks[todayName] || [];
 
   const handleToggle = (taskId) => {
-    setTasks((prev) => ({
-      ...prev,
-      [selectedDay]: prev[selectedDay].map((t) =>
+    setTasks((prev) => {
+      const updated = prev[selectedDay].map((t) =>
         t.id === taskId ? { ...t, done: !t.done } : t
-      ),
-    }));
+      );
+      const task = updated.find((t) => t.id === taskId);
+      const delta = task.done ? 10 : -10;
+      if (onPointsChange) onPointsChange(delta);
+      if (delta > 0) {
+        const toastId = Date.now();
+        setPointsToast({ id: toastId, delta });
+        setTimeout(() => setPointsToast((p) => (p?.id === toastId ? null : p)), 1500);
+      }
+      return { ...prev, [selectedDay]: updated };
+    });
   };
 
   const accent = theme?.accent || '#2DD4BF';
 
   return (
-    <div className="p-4 max-w-7xl mx-auto">
+    <div className="p-4 max-w-7xl mx-auto relative">
+      {/* Points earned toast */}
+      {pointsToast && (
+        <div
+          key={pointsToast.id}
+          className="fixed top-24 right-6 z-50 flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-bold shadow-lg animate-bounce pointer-events-none"
+          style={{ background: `linear-gradient(135deg, ${accent}, ${accent}cc)` }}
+        >
+          <Star size={14} fill="white" />
+          +{pointsToast.delta} pts
+        </div>
+      )}
       {/* Date header */}
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-dark">{todayFormatted}</h1>
@@ -84,7 +106,7 @@ export default function Dashboard({ tasks, setTasks, selectedDay, setSelectedDay
           </div>
 
           {/* Quick stats row */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-4 gap-3">
             {[
               { label: 'Completed', value: completedCount, color: 'text-green-600', bg: 'bg-green-50' },
               { label: 'Remaining', value: dayTasks.length - completedCount, color: 'text-blue-600', bg: 'bg-blue-50' },
@@ -95,6 +117,10 @@ export default function Dashboard({ tasks, setTasks, selectedDay, setSelectedDay
                 <p className="text-xs text-gray-500 mt-0.5">{stat.label}</p>
               </div>
             ))}
+            <div className="rounded-xl p-3 text-center relative overflow-hidden" style={{ backgroundColor: accent + '20' }}>
+              <p className="text-2xl font-bold" style={{ color: accent }}>{taskPoints}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Pts</p>
+            </div>
           </div>
 
           {/* Study Mode */}

@@ -1,29 +1,30 @@
 import { useState, useEffect } from 'react';
-import { Trophy, Flame, Zap } from 'lucide-react';
+import { Trophy, Flame, Zap, Star } from 'lucide-react';
 import AccountabilityCircle from '../AccountabilityCircle';
 
 const medalColors = ['text-yellow-400', 'text-gray-400', 'text-orange-400'];
 
 const SOCIAL_GOALS = {
   meet:    { headline: 'Expand Your Circle', actions: ['Say hi to one new person today', 'Join one club, class, or group this week', 'Ask someone you see often their name'] },
-  friends: { headline: 'Deepen Your Friendships', actions: ['Text a friend you haven\'t talked to in a while', 'Suggest a specific plan instead of "we should hang"', 'Remember one thing about each friend\'s life this week'] },
+  friends: { headline: 'Deepen Your Friendships', actions: ["Text a friend you haven't talked to in a while", 'Suggest a specific plan instead of "we should hang"', "Remember one thing about each friend's life this week"] },
   phone:   { headline: 'Reclaim Real Connection', actions: ['Phone-free meals — even just one per day', 'When with others, put phone face-down', 'Schedule a phone-free activity each week'] },
   goals:   { headline: 'Intentional Social Life', actions: ['Define: how many close friends do you want?', 'Block time for social activities like you would work', 'Review your social life monthly — are you investing in the right people?'] },
 };
 
 const BARRIER_TIPS = {
-  anxiety:    '😬 Social anxiety is common. Start tiny — say hi to one person today. That\'s the whole goal.',
+  anxiety:    "😬 Social anxiety is common. Start tiny — say hi to one person today. That's the whole goal.",
   time:       '⏰ No time for social? Combine it. Study together, walk together, eat together.',
   confidence: '🪞 Confidence builds from action, not from waiting to feel ready. One interaction per day.',
   location:   '📍 Hard to meet people nearby? Online communities count. Find one in your interest area.',
 };
 
-export default function SocialTab({ theme, userName, profile, userId, userStats }) {
+export default function SocialTab({ theme, userName, profile, userId, userStats, taskPoints = 0 }) {
   const socialDetails = profile?.goalDetails?.social;
   const socialGoal    = socialDetails?.[0];
   const barrier       = socialDetails?.[2];
   const goalPlan      = SOCIAL_GOALS[socialGoal] ?? null;
   const [view, setView] = useState('leaderboard');
+  const [rankBy, setRankBy] = useState('xp');
   const [leaderboard, setLeaderboard] = useState([]);
 
   useEffect(() => {
@@ -33,18 +34,22 @@ export default function SocialTab({ theme, userName, profile, userId, userStats 
       .catch(() => {});
   }, []);
 
-  // Merge current user into leaderboard if not already present
   const board = (() => {
     if (!userId || !userStats) return leaderboard;
     const exists = leaderboard.some((e) => e.user_id === userId);
-    if (exists) return leaderboard;
+    const withPoints = leaderboard.map((e) =>
+      e.user_id === userId ? { ...e, taskPoints } : e
+    );
+    if (exists) return withPoints;
     return [
-      ...leaderboard,
-      { user_id: userId, name: userName || 'You', xp: userStats.xp ?? 0, level: userStats.level ?? 1, streak: userStats.streak ?? 0, badges: userStats.badges ?? [] },
+      ...withPoints,
+      { user_id: userId, name: userName || 'You', xp: userStats.xp ?? 0, level: userStats.level ?? 1, streak: userStats.streak ?? 0, badges: userStats.badges ?? [], taskPoints },
     ].sort((a, b) => b.xp - a.xp);
   })();
 
-  const sorted = board;
+  const sorted = rankBy === 'points'
+    ? [...board].sort((a, b) => (b.taskPoints ?? 0) - (a.taskPoints ?? 0))
+    : board;
 
   return (
     <div className="p-4 max-w-7xl mx-auto">
@@ -53,24 +58,16 @@ export default function SocialTab({ theme, userName, profile, userId, userStats 
           <h1 className="text-2xl font-bold text-dark">Social</h1>
           <p className="text-gray-500 text-sm">Compete, support & grow together</p>
         </div>
-
-        {/* Toggle */}
         <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
           {['leaderboard', 'circle'].map(v => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all capitalize ${
-                view === v ? 'bg-white shadow-sm text-dark' : 'text-gray-500'
-              }`}
-            >
+            <button key={v} onClick={() => setView(v)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all capitalize ${view === v ? 'bg-white shadow-sm text-dark' : 'text-gray-500'}`}>
               {v === 'circle' ? '🤝 Circle' : '🏆 Ranks'}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Personalized social plan */}
       {goalPlan && (
         <div className="bg-white rounded-2xl shadow-sm p-5 mb-4 border-l-4 border-purple-400">
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Your Social Goal</span>
@@ -92,7 +89,15 @@ export default function SocialTab({ theme, userName, profile, userId, userStats 
 
       {view === 'leaderboard' ? (
         <>
-          {/* Top 3 podium */}
+          <div className="flex bg-gray-100 rounded-xl p-1 gap-1 mb-4 w-fit">
+            {[{ id: 'xp', label: '⚡ XP' }, { id: 'points', label: '⭐ Task Points' }].map(opt => (
+              <button key={opt.id} onClick={() => setRankBy(opt.id)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${rankBy === opt.id ? 'bg-white shadow-sm text-dark' : 'text-gray-500'}`}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
           {sorted.length >= 3 && (
             <div className="bg-white rounded-2xl shadow-sm p-5 mb-4">
               <div className="flex items-end justify-center gap-4">
@@ -103,17 +108,13 @@ export default function SocialTab({ theme, userName, profile, userId, userStats 
                   const medals = ['🥈', '🥇', '🥉'];
                   const isMe = entry.user_id === userId;
                   return (
-                    <div key={entry.user_id} className="flex flex-col items-center gap-2">
+                    <div key={entry.user_id ?? i} className="flex flex-col items-center gap-2">
                       <span className="text-2xl">{medals[i]}</span>
-                      <img
-                        src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${entry.name}`}
-                        alt={entry.name}
-                        className="w-12 h-12 rounded-full bg-gray-200"
-                      />
-                      <p className="text-xs font-semibold text-dark text-center">
-                        {entry.name.split(' ')[0]}{isMe ? ' (You)' : ''}
+                      <img src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${entry.name}`} alt={entry.name} className="w-12 h-12 rounded-full bg-gray-200" />
+                      <p className="text-xs font-semibold text-dark text-center">{entry.name.split(' ')[0]}{isMe ? ' (You)' : ''}</p>
+                      <p className="text-xs text-gray-500">
+                        {rankBy === 'points' ? `${entry.taskPoints ?? 0} pts` : `${(entry.xp ?? 0).toLocaleString()} XP`}
                       </p>
-                      <p className="text-xs text-gray-500">{entry.xp.toLocaleString()} XP</p>
                       <div className={`${heights[i]} ${bgColors[i]} w-20 rounded-t-xl flex items-end justify-center pb-2`}>
                         <span className="font-bold text-lg text-gray-600">#{actualRank}</span>
                       </div>
@@ -124,7 +125,6 @@ export default function SocialTab({ theme, userName, profile, userId, userStats 
             </div>
           )}
 
-          {/* Full leaderboard */}
           <div className="bg-white rounded-2xl shadow-sm p-5">
             <h3 className="font-semibold text-dark text-sm mb-3">Full Rankings</h3>
             {sorted.length === 0 ? (
@@ -134,45 +134,36 @@ export default function SocialTab({ theme, userName, profile, userId, userStats 
                 {sorted.map((entry, i) => {
                   const isMe = entry.user_id === userId;
                   return (
-                    <div
-                      key={entry.user_id}
-                      className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
-                        isMe ? 'bg-green-50 border-2 border-primary' : 'hover:bg-gray-50'
-                      }`}
-                    >
+                    <div key={entry.user_id ?? i}
+                      className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isMe ? 'bg-green-50 border-2 border-primary' : 'hover:bg-gray-50'}`}>
                       <div className="w-7 flex items-center justify-center">
-                        {i < 3 ? (
-                          <Trophy size={18} className={medalColors[i]} />
-                        ) : (
-                          <span className="text-sm font-bold text-gray-400">#{i + 1}</span>
-                        )}
+                        {i < 3 ? <Trophy size={18} className={medalColors[i]} /> : <span className="text-sm font-bold text-gray-400">#{i + 1}</span>}
                       </div>
-                      <img
-                        src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${entry.name}`}
-                        alt={entry.name}
-                        className="w-10 h-10 rounded-full bg-gray-200 shrink-0"
-                      />
+                      <img src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${entry.name}`} alt={entry.name} className="w-10 h-10 rounded-full bg-gray-200 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="font-medium text-sm text-dark truncate">{entry.name}</p>
-                          {isMe && (
-                            <span className="text-xs bg-primary text-dark px-1.5 py-0.5 rounded-full font-medium">You</span>
-                          )}
+                          {isMe && <span className="text-xs bg-primary text-dark px-1.5 py-0.5 rounded-full font-medium">You</span>}
                         </div>
                         <div className="flex items-center gap-3 mt-0.5">
-                          <div className="flex items-center gap-1">
-                            <Zap size={10} className="text-yellow-400" />
-                            <span className="text-xs text-gray-500">Lv {entry.level}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Flame size={10} className="text-orange-400" />
-                            <span className="text-xs text-gray-500">{entry.streak}d</span>
-                          </div>
+                          <div className="flex items-center gap-1"><Zap size={10} className="text-yellow-400" /><span className="text-xs text-gray-500">Lv {entry.level}</span></div>
+                          <div className="flex items-center gap-1"><Flame size={10} className="text-orange-400" /><span className="text-xs text-gray-500">{entry.streak}d</span></div>
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1">
-                        <span className="text-sm font-bold text-dark">{entry.xp.toLocaleString()}</span>
-                        <span className="text-xs text-gray-400">XP</span>
+                        {rankBy === 'points' ? (
+                          <>
+                            <span className="text-sm font-bold text-dark flex items-center gap-1">
+                              <Star size={12} className="text-yellow-400" fill="currentColor" />{entry.taskPoints ?? 0}
+                            </span>
+                            <span className="text-xs text-gray-400">pts</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-sm font-bold text-dark">{(entry.xp ?? 0).toLocaleString()}</span>
+                            <span className="text-xs text-gray-400">XP</span>
+                          </>
+                        )}
                       </div>
                       <div className="hidden sm:flex gap-0.5">
                         {(entry.badges ?? []).map((b, j) => <span key={j} className="text-sm">{b}</span>)}

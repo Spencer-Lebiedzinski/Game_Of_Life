@@ -11,6 +11,7 @@ import FinanceTab from './components/tabs/FinanceTab';
 import FloatingActionButton from './components/FloatingActionButton';
 import Onboarding from './components/Onboarding';
 import SettingsTab from './components/tabs/SettingsTab';
+import SobrietyTab from './components/tabs/SobrietyTab';
 import LoginScreen from './auth/LoginScreen.jsx';
 import { weekTasks } from './data/mockData';
 
@@ -28,6 +29,18 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [tasks, setTasks] = useState(weekTasks);
   const [selectedDay, setSelectedDay] = useState(getTodayKey());
+  const [taskPoints, setTaskPoints] = useState(() => {
+    const saved = localStorage.getItem('taskPoints');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const addPoints = (delta) => {
+    setTaskPoints((prev) => {
+      const next = Math.max(0, prev + delta);
+      localStorage.setItem('taskPoints', String(next));
+      return next;
+    });
+  };
 
   const userId = user?.sub || 'frontend-user';
 
@@ -127,18 +140,22 @@ export default function App() {
             userName={profile.name}
             theme={profile.theme}
             userStats={userStats}
+            taskPoints={taskPoints}
+            onPointsChange={addPoints}
           />
         );
-      case 'school':   return <SchoolTab profile={profile} />;
+      case 'school':   return <SchoolTab userId={userId} theme={profile.theme} />;
       case 'fitness':  return <FitnessTab profile={profile} />;
       case 'mindset':  return <MindsetTab profile={profile} />;
       case 'social':
-        return <SocialTab theme={profile.theme} userName={profile.name} profile={profile} userId={userId} userStats={userStats} />;
+        return <SocialTab theme={profile.theme} userName={profile.name} profile={profile} userId={userId} userStats={userStats} taskPoints={taskPoints} />;
       case 'analytics':
         return <AnalyticsTab userId={userId} />;
       case 'finance':  return <FinanceTab profile={profile} />;
       case 'settings':
         return <SettingsTab profile={profile} userId={userId} onProfileUpdate={handleProfileUpdate} />;
+      case 'sobriety':
+        return <SobrietyTab theme={profile.theme} userName={profile.name} />;
       default: return null;
     }
   };
@@ -152,6 +169,7 @@ export default function App() {
         theme={profile.theme}
         goals={profile.goals}
         userStats={userStats}
+        taskPoints={taskPoints}
       />
       <main className="pb-24">{renderContent()}</main>
       <FloatingActionButton onAdd={handleAdd} />

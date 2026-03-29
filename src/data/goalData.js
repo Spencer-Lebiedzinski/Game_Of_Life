@@ -6,7 +6,8 @@ export const GOAL_OPTIONS = [
   { id: 'mindset', label: 'Build Mindset',  icon: '🧠', desc: 'Journaling, mood & gratitude' },
   { id: 'social',  label: 'Grow Socially',  icon: '🤝', desc: 'Friendships & connections' },
   { id: 'finance', label: 'Manage Money',   icon: '💰', desc: 'Budget, spending & savings' },
-  { id: 'sleep',   label: 'Sleep Better',   icon: '😴', desc: 'Track & improve sleep quality' },
+  { id: 'sleep',     label: 'Sleep Better', icon: '😴', desc: 'Track & improve sleep quality' },
+  { id: 'sobriety', label: 'Stay Sober',   icon: '🛡️', desc: 'Beat addiction & track clean days' },
 ];
 
 export const CLARIFY_QUESTIONS = {
@@ -197,5 +198,5 @@ export const THEMES = [
 
 export const GOAL_TO_BACKEND = {
   school: 'better_grades', fitness: 'lose_weight', mindset: 'reduce_stress',
-  social: 'be_more_social', finance: 'save_money', sleep: 'sleep_better',
+  social: 'be_more_social', finance: 'save_money', sleep: 'sleep_better', sobriety: 'stay_sober',
 };
