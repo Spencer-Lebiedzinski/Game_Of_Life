@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     frontend_redirect_url: str | None = None
     oauth_state_secret: str = "replace-this"
 
+    gemini_api_key: str | None = None
+
     app_env: str = "development"
     app_debug: bool = True
 

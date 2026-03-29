@@ -23,7 +23,7 @@ export default function Header({ activeTab, setActiveTab, userName, theme, goals
   const primary = theme?.primary || '#6EE7B7';
 
   const goalTabs   = GOAL_OPTIONS.map((g) => ({ id: g.id, label: g.shortLabel, goal: g.id }));
-  const customTabs = (profile?.customGoals ?? []).map((g) => ({ id: g.id, label: g.label, goal: g.id }));
+  const customTabs = (profile?.customGoals ?? []).map((g) => ({ id: g.id, label: g.label, goal: g.id, alwaysShow: true }));
   const allTabs = [
     { id: 'dashboard', label: 'Dashboard', alwaysShow: true },
     ...goalTabs,
