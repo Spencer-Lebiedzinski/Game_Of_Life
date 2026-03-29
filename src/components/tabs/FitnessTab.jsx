@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CheckCircle, Circle, Dumbbell, Plus } from 'lucide-react';
+import { useTabData } from '../../hooks/useTabData';
 
 const WORKOUT_SUGGESTIONS = {
   strength: {
@@ -178,8 +179,8 @@ const typeColors = {
   Flexibility: 'bg-purple-100 text-purple-700',
 };
 
-export default function FitnessTab({ profile }) {
-  const [workouts, setWorkouts] = useState([]);
+export default function FitnessTab({ profile, userId }) {
+  const [workouts, setWorkouts] = useTabData(userId, 'fitness', []);
   const [showLog, setShowLog] = useState(false);
   const [newWorkout, setNewWorkout] = useState({ name: '', type: 'Cardio', duration: '' });
 

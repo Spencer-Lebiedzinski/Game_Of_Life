@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
+import { useTabData } from '../../hooks/useTabData';
 
 const FINANCE_TIPS = {
   track: {
@@ -50,8 +51,8 @@ const MONEY_MINDSET_CONTEXT = {
   'clueless':   'No judgment at all. Starting with one number — monthly take-home — unlocks everything else.',
 };
 
-export default function FinanceTab({ profile }) {
-  const [expenses, setExpenses]   = useState([]);
+export default function FinanceTab({ profile, userId }) {
+  const [expenses, setExpenses]   = useTabData(userId, 'finance', []);
   const [showAdd, setShowAdd]     = useState(false);
   const [newDesc, setNewDesc]     = useState('');
   const [newAmount, setNewAmount] = useState('');

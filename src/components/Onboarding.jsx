@@ -105,6 +105,7 @@ export default function Onboarding({ onComplete, userId = 'frontend-user' }) {
         vaping_drinking: false,
         academic_struggle: goalDetails.school?.[0] || null,
         goal_details: goalDetails,
+        theme: theme,
       }),
     }).catch(() => {});
 

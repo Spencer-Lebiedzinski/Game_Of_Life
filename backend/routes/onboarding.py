@@ -1,22 +1,10 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from enum import Enum
 from db import get_db
 from services.stats_service import get_or_create_stats
 
 router = APIRouter()
-
-
-class Goal(str, Enum):
-    better_grades = "better_grades"
-    lose_weight = "lose_weight"
-    save_money = "save_money"
-    reduce_stress = "reduce_stress"
-    sleep_better = "sleep_better"
-    be_more_social = "be_more_social"
-    reduce_screen_time = "reduce_screen_time"
-    stop_vaping_drinking = "stop_vaping_drinking"
 
 
 class OnboardingPayload(BaseModel):
@@ -29,11 +17,11 @@ class OnboardingPayload(BaseModel):
     spending_awareness: int = Field(..., ge=1, le=5)
     screen_time_struggle: str = Field(..., pattern="^(yes|no|sometimes)$")
     social_activity: int = Field(..., ge=1, le=5)
-    goals: List[Goal] = Field(..., min_length=1, max_length=6)
+    goals: List[str] = Field(..., min_length=1)
     vaping_drinking: bool
     academic_struggle: Optional[str] = None
-    # 3 answers per selected goal — powers Gemini personalization
     goal_details: Optional[dict] = None
+    theme: Optional[dict] = None
 
 
 class UserProfile(BaseModel):
@@ -50,6 +38,9 @@ class UserProfile(BaseModel):
     vaping_drinking: bool
     academic_struggle: Optional[str]
     goal_details: Optional[dict] = None
+    theme: Optional[dict] = None
+    custom_goals: Optional[list] = None
+    friends: Optional[list] = None
     onboarding_complete: bool = True
 
 
@@ -70,10 +61,13 @@ async def submit_onboarding(payload: OnboardingPayload):
         "spending_awareness": payload.spending_awareness,
         "screen_time_struggle": payload.screen_time_struggle,
         "social_activity": payload.social_activity,
-        "goals": [g.value for g in payload.goals],
+        "goals": payload.goals,
         "vaping_drinking": payload.vaping_drinking,
         "academic_struggle": payload.academic_struggle,
         "goal_details": payload.goal_details,
+        "theme": payload.theme,
+        "custom_goals": [],
+        "friends": [],
         "onboarding_complete": True,
     }
 

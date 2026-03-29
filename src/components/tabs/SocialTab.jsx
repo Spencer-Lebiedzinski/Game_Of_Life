@@ -23,12 +23,12 @@ export default function SocialTab({ theme, userName, profile, userId, userStats,
   const socialGoal    = socialDetails?.[0];
   const barrier       = socialDetails?.[2];
   const goalPlan      = SOCIAL_GOALS[socialGoal] ?? null;
-  const [view, setView] = useState('leaderboard');
-  const [rankBy, setRankBy] = useState('xp');
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [groupMembers, setGroupMembers] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('groupMembers') || '[]'); } catch { return []; }
-  });
+  const [view, setView]         = useState('leaderboard');
+  const [lbFilter, setLbFilter] = useState('global'); // 'global' | 'friends'
+  const [rankBy, setRankBy]     = useState('xp');     // 'xp' | 'points'
+  const [leaderboard, setLeaderboard]   = useState([]);
+  const [friendsBoard, setFriendsBoard] = useState([]);
+  const [boardLoading, setBoardLoading] = useState(false);
 
   useEffect(() => {
     fetch('http://localhost:8000/api/stats/leaderboard/all')
@@ -37,18 +37,20 @@ export default function SocialTab({ theme, userName, profile, userId, userStats,
       .catch(() => {});
   }, []);
 
-  const handleGroupChange = ({ members }) => setGroupMembers(members);
+  useEffect(() => {
+    if (!userId || userId === 'frontend-user') return;
+    setBoardLoading(true);
+    fetch(`http://localhost:8000/api/social/friends-leaderboard/${userId}`)
+      .then((r) => r.json())
+      .then((data) => setFriendsBoard(data.leaderboard ?? []))
+      .catch(() => {})
+      .finally(() => setBoardLoading(false));
+  }, [userId]);
 
-  const board = (() => {
-    const me = { user_id: userId, name: userName || 'You', xp: userStats?.xp ?? 0, level: userStats?.level ?? 1, streak: userStats?.streak ?? 0, badges: userStats?.badges ?? [], taskPoints };
-    if (groupMembers.length > 0) {
-      return groupMembers.map((m) =>
-        m.isMe
-          ? { ...m, user_id: userId, xp: userStats?.xp ?? 0, level: userStats?.level ?? 1, streak: userStats?.streak ?? 0, badges: userStats?.badges ?? [], taskPoints }
-          : { ...m, user_id: m.id?.toString() ?? m.name }
-      );
-    }
+  // Merge current user into global leaderboard if not already present
+  const globalBoard = (() => {
     if (!userId || !userStats) return leaderboard;
+    const me = { user_id: userId, name: userName || 'You', xp: userStats.xp ?? 0, level: userStats.level ?? 1, streak: userStats.streak ?? 0, badges: userStats.badges ?? [], taskPoints };
     const exists = leaderboard.some((e) => e.user_id === userId);
     const withPoints = leaderboard.map((e) =>
       e.user_id === userId ? { ...e, taskPoints } : e
@@ -57,7 +59,8 @@ export default function SocialTab({ theme, userName, profile, userId, userStats,
     return [...withPoints, me].sort((a, b) => b.xp - a.xp);
   })();
 
-  const sorted = [...board].sort((a, b) =>
+  const baseBoard = lbFilter === 'friends' ? friendsBoard : globalBoard;
+  const sorted = [...baseBoard].sort((a, b) =>
     rankBy === 'points' ? (b.taskPoints ?? 0) - (a.taskPoints ?? 0) : (b.xp ?? 0) - (a.xp ?? 0)
   );
 
@@ -99,20 +102,34 @@ export default function SocialTab({ theme, userName, profile, userId, userStats,
 
       {view === 'leaderboard' ? (
         <>
-          {groupMembers.length > 0 && (
-            <div className="mb-3 flex items-center gap-2 text-xs text-gray-500">
-              <span>👥</span>
-              <span>Showing your group ({groupMembers.length} member{groupMembers.length !== 1 ? 's' : ''})</span>
+          {/* Global / Friends filter */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
+              {['global', 'friends'].map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setLbFilter(f)}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${lbFilter === f ? 'bg-white shadow-sm text-dark' : 'text-gray-500'}`}
+                >
+                  {f === 'global' ? '🌍 Global' : '👥 Friends'}
+                </button>
+              ))}
+            </div>
+            <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
+              {[{ id: 'xp', label: '⚡ XP' }, { id: 'points', label: '⭐ Task Points' }].map(opt => (
+                <button key={opt.id} onClick={() => setRankBy(opt.id)}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${rankBy === opt.id ? 'bg-white shadow-sm text-dark' : 'text-gray-500'}`}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {lbFilter === 'friends' && friendsBoard.length <= 1 && !boardLoading && (
+            <div className="bg-white rounded-2xl shadow-sm p-6 mb-4 text-center">
+              <p className="text-sm text-gray-400">Add friends from the Circle tab to compete here.</p>
             </div>
           )}
-          <div className="flex bg-gray-100 rounded-xl p-1 gap-1 mb-4 w-fit">
-            {[{ id: 'xp', label: '⚡ XP' }, { id: 'points', label: '⭐ Task Points' }].map(opt => (
-              <button key={opt.id} onClick={() => setRankBy(opt.id)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${rankBy === opt.id ? 'bg-white shadow-sm text-dark' : 'text-gray-500'}`}>
-                {opt.label}
-              </button>
-            ))}
-          </div>
 
           {sorted.length >= 3 && (
             <div className="bg-white rounded-2xl shadow-sm p-5 mb-4">
@@ -192,7 +209,7 @@ export default function SocialTab({ theme, userName, profile, userId, userStats,
           </div>
         </>
       ) : (
-        <AccountabilityCircle theme={theme} userName={userName} onGroupChange={handleGroupChange} />
+        <AccountabilityCircle theme={theme} userName={userName} userId={userId} />
       )}
     </div>
   );

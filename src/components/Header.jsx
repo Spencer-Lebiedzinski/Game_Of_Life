@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Bell, Mic, Zap, Flame, LogOut, Settings, Star } from 'lucide-react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { notifications } from '../data/mockData';
+import { GOAL_OPTIONS } from '../data/goalData';
 
-export default function Header({ activeTab, setActiveTab, userName, theme, goals = [], userStats, taskPoints = 0 }) {
+export default function Header({ activeTab, setActiveTab, userName, theme, goals = [], userStats, taskPoints = 0, profile }) {
   const { logout, user: auth0User } = useAuth0();
   const [showNotifs, setShowNotifs] = useState(false);
   const [showMicToast, setShowMicToast] = useState(false);
@@ -21,15 +22,14 @@ export default function Header({ activeTab, setActiveTab, userName, theme, goals
   const accent = theme?.accent || '#2DD4BF';
   const primary = theme?.primary || '#6EE7B7';
 
+  const goalTabs   = GOAL_OPTIONS.map((g) => ({ id: g.id, label: g.shortLabel, goal: g.id }));
+  const customTabs = (profile?.customGoals ?? []).map((g) => ({ id: g.id, label: g.label, goal: g.id }));
   const allTabs = [
     { id: 'dashboard', label: 'Dashboard', alwaysShow: true },
-    { id: 'school', label: 'School', goal: 'school' },
-    { id: 'fitness', label: 'Fitness', goal: 'fitness' },
-    { id: 'mindset', label: 'Mindset', goal: 'mindset' },
-    { id: 'social', label: 'Social', goal: 'social' },
+    ...goalTabs,
+    ...customTabs,
     { id: 'analytics', label: 'Analytics', alwaysShow: true },
-    { id: 'finance', label: 'Finance', goal: 'finance' },
-    { id: 'sobriety', label: 'Sobriety 🛡️', goal: 'sobriety' },
+    { id: 'planning',  label: 'Planning',  alwaysShow: true },
     { id: 'settings', label: '⚙️', alwaysShow: true },
   ];
 

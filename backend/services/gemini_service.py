@@ -273,6 +273,68 @@ def parse_suggestions(raw: str) -> list[dict]:
     return validated
 
 
+def _parse_json(raw: str) -> dict | list:
+    """Strip markdown fences and parse JSON from a Gemini response."""
+    text = raw.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        text = "\n".join(lines[1:-1] if lines[-1] == "```" else lines[1:])
+    return json.loads(text)
+
+
+async def research_custom_goal(goal_text: str, user_name: str) -> dict:
+    """Generate label, icon, summary, and 3 clarifying questions for a free-text goal."""
+    prompt = f"""{user_name} wants to work on this goal: "{goal_text}"
+
+Return ONLY valid JSON (no markdown, no extra text):
+{{
+  "label": "short title (3-5 words, title case)",
+  "icon": "single relevant emoji",
+  "summary": "2 sentences: what this goal involves and why it matters for a college student",
+  "questions": [
+    {{
+      "question": "specific question relevant to this goal",
+      "options": [
+        {{"id": "snake_case_id", "icon": "emoji", "label": "short label", "desc": "one-line description"}},
+        {{"id": "snake_case_id", "icon": "emoji", "label": "short label", "desc": "one-line description"}},
+        {{"id": "snake_case_id", "icon": "emoji", "label": "short label", "desc": "one-line description"}},
+        {{"id": "snake_case_id", "icon": "emoji", "label": "short label", "desc": "one-line description"}}
+      ]
+    }}
+  ]
+}}
+Generate exactly 3 questions with exactly 4 options each. Return ONLY the JSON object."""
+
+    model = _get_model()
+    response = model.generate_content(prompt)
+    return _parse_json(response.text)
+
+
+async def get_custom_goal_insight(goal: dict) -> dict:
+    """Generate personalized tips and a suggested weekly task list from a custom goal's answers."""
+    answers_text = ", ".join(goal.get("answers", []))
+    prompt = f"""A student has the goal: "{goal['label']}"
+Goal summary: {goal['summary']}
+Their answers to setup questions: {answers_text}
+
+Return ONLY valid JSON (no markdown, no extra text):
+{{
+  "tips": ["tip 1 personalized to their answers", "tip 2", "tip 3"],
+  "tasks": [
+    {{"title": "specific actionable task", "day": "Mon"}},
+    {{"title": "specific actionable task", "day": "Tue"}},
+    {{"title": "specific actionable task", "day": "Wed"}},
+    {{"title": "specific actionable task", "day": "Thu"}},
+    {{"title": "specific actionable task", "day": "Fri"}}
+  ]
+}}
+Tasks should be concrete first steps spread across a week. Return ONLY the JSON object."""
+
+    model = _get_model()
+    response = model.generate_content(prompt)
+    return _parse_json(response.text)
+
+
 async def get_suggestions(
     profile: dict,
     checkins: list[dict],
