@@ -221,9 +221,21 @@ class CanvasClient:
             ) from exc
 
         if response.status_code >= 400:
+            # Extract Canvas's own error message for better debugging
+            canvas_msg = "Invalid Canvas token."
+            try:
+                err_body = response.json()
+                errors = err_body.get("errors", [])
+                if errors and isinstance(errors, list):
+                    canvas_msg = errors[0].get("message", canvas_msg)
+                elif err_body.get("message"):
+                    canvas_msg = err_body["message"]
+            except Exception:
+                canvas_msg = response.text[:200] if response.text else canvas_msg
             raise HTTPException(
                 status_code=400,
-                detail="Invalid Canvas token.",
+                detail=f"Canvas rejected the token (HTTP {response.status_code}): {canvas_msg}. "
+                       f"Make sure you copied the full token from Canvas → Account → Settings → Approved Integrations → New Access Token.",
             )
 
         return response.json()

@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Bell, Mic, Zap, Flame, LogOut, Settings } from 'lucide-react';
+import { Bell, Mic, Zap, Flame, LogOut, Settings, Star } from 'lucide-react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { notifications } from '../data/mockData';
 import { GOAL_OPTIONS } from '../data/goalData';
 
-export default function Header({ activeTab, setActiveTab, userName, theme, goals = [], userStats, profile }) {
+export default function Header({ activeTab, setActiveTab, userName, theme, goals = [], userStats, taskPoints = 0, profile }) {
   const { logout, user: auth0User } = useAuth0();
   const [showNotifs, setShowNotifs] = useState(false);
   const [showMicToast, setShowMicToast] = useState(false);
@@ -30,6 +30,7 @@ export default function Header({ activeTab, setActiveTab, userName, theme, goals
     ...customTabs,
     { id: 'analytics', label: 'Analytics', alwaysShow: true },
     { id: 'planning',  label: 'Planning',  alwaysShow: true },
+    { id: 'settings', label: '⚙️', alwaysShow: true },
   ];
 
   const tabs = goals.length === 0
@@ -71,11 +72,15 @@ export default function Header({ activeTab, setActiveTab, userName, theme, goals
             </div>
           </div>
 
-          {/* Streak + Badges */}
+          {/* Streak + Points + Badges */}
           <div className="flex items-center gap-3 shrink-0">
             <div className="flex items-center gap-1">
               <Flame size={16} className="text-orange-400" />
               <span className="text-orange-400 font-semibold text-sm">{streak}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Star size={14} className="text-yellow-300" fill="currentColor" />
+              <span className="text-yellow-300 font-semibold text-sm">{taskPoints} pts</span>
             </div>
             <div className="hidden sm:flex gap-1">
               {badges.map((badge, i) => (

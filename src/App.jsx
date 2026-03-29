@@ -11,6 +11,7 @@ import FinanceTab from './components/tabs/FinanceTab';
 import FloatingActionButton from './components/FloatingActionButton';
 import Onboarding from './components/Onboarding';
 import SettingsTab from './components/tabs/SettingsTab';
+import SobrietyTab from './components/tabs/SobrietyTab';
 import SleepTab from './components/tabs/SleepTab';
 import PlanningTab from './components/tabs/PlanningTab';
 import CustomGoalTab from './components/tabs/CustomGoalTab';
@@ -31,6 +32,18 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [tasks, setTasks] = useState(weekTasks);
   const [selectedDay, setSelectedDay] = useState(getTodayKey());
+  const [taskPoints, setTaskPoints] = useState(() => {
+    const saved = localStorage.getItem('taskPoints');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const addPoints = (delta) => {
+    setTaskPoints((prev) => {
+      const next = Math.max(0, prev + delta);
+      localStorage.setItem('taskPoints', String(next));
+      return next;
+    });
+  };
 
   const userId = user?.sub || 'frontend-user';
 
@@ -85,6 +98,7 @@ export default function App() {
   const handleOnboardingComplete = (data) => {
     setProfile(data);
     applyTheme(data.theme);
+    if (data.sound) localStorage.setItem('soundPref', data.sound);
   };
 
   const handleProfileUpdate = (updatedProfile) => {
@@ -138,19 +152,24 @@ export default function App() {
             userName={profile.name}
             theme={profile.theme}
             userStats={userStats}
+            taskPoints={taskPoints}
+            onPointsChange={addPoints}
+            sound={profile.sound || localStorage.getItem('soundPref') || 'chime'}
           />
         );
       case 'school':   return <SchoolTab profile={profile} userId={userId} />;
       case 'fitness':  return <FitnessTab profile={profile} userId={userId} />;
       case 'mindset':  return <MindsetTab profile={profile} userId={userId} />;
       case 'social':
-        return <SocialTab theme={profile.theme} userName={profile.name} profile={profile} userId={userId} userStats={userStats} />;
+        return <SocialTab theme={profile.theme} userName={profile.name} profile={profile} userId={userId} userStats={userStats} taskPoints={taskPoints} />;
       case 'analytics':
         return <AnalyticsTab userId={userId} />;
       case 'finance':  return <FinanceTab profile={profile} userId={userId} />;
       case 'sleep':    return <SleepTab profile={profile} userId={userId} />;
       case 'settings':
         return <SettingsTab profile={profile} userId={userId} onProfileUpdate={handleProfileUpdate} />;
+      case 'sobriety':
+        return <SobrietyTab theme={profile.theme} userName={profile.name} />;
       case 'planning':
         return <PlanningTab profile={profile} userId={userId} onGoalCreated={handleGoalCreated} />;
       default: {
@@ -170,6 +189,7 @@ export default function App() {
         theme={profile.theme}
         goals={profile.goals}
         userStats={userStats}
+        taskPoints={taskPoints}
         profile={profile}
       />
       <main className="pb-24">{renderContent()}</main>

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { ChevronRight, ChevronLeft, Check } from 'lucide-react';
 import { GOAL_OPTIONS, CLARIFY_QUESTIONS, THEMES, GOAL_TO_BACKEND } from '../data/goalData';
+import { SOUND_OPTIONS, playComplete } from '../utils/sounds';
 
-const STEPS = ['welcome', 'name', 'goals', 'clarify', 'theme', 'done'];
+const STEPS = ['welcome', 'name', 'goals', 'clarify', 'theme', 'sound', 'done'];
 
 export default function Onboarding({ onComplete, userId = 'frontend-user' }) {
   const [step, setStep] = useState(0);
@@ -13,6 +14,7 @@ export default function Onboarding({ onComplete, userId = 'frontend-user' }) {
   const [clarifyGoalIdx, setClarifyGoalIdx] = useState(0);
   const [clarifyQIdx, setClarifyQIdx] = useState(0);
   const [selectedTheme, setSelectedTheme] = useState('mint');
+  const [selectedSound, setSelectedSound] = useState('chime');
 
   const stepKey = STEPS[step];
   const theme = THEMES.find((t) => t.id === selectedTheme) || THEMES[0];
@@ -78,7 +80,8 @@ export default function Onboarding({ onComplete, userId = 'frontend-user' }) {
     (stepKey === 'name' && name.trim().length > 0) ||
     (stepKey === 'goals' && selectedGoals.length > 0) ||
     (stepKey === 'clarify' && !!currentAnswer) ||
-    stepKey === 'theme';
+    stepKey === 'theme' ||
+    stepKey === 'sound';
 
   const effectiveStepKey = stepKey === 'clarify' && goalsToClarify.length === 0 ? 'theme' : stepKey;
 
@@ -106,7 +109,7 @@ export default function Onboarding({ onComplete, userId = 'frontend-user' }) {
       }),
     }).catch(() => {});
 
-    onComplete({ name: playerName, goals: selectedGoals, goalDetails, theme });
+    onComplete({ name: playerName, goals: selectedGoals, goalDetails, theme, sound: selectedSound });
   };
 
   return (
@@ -300,6 +303,43 @@ export default function Onboarding({ onComplete, userId = 'frontend-user' }) {
           </div>
         )}
 
+        {/* SOUND */}
+        {effectiveStepKey === 'sound' && (
+          <div>
+            <div className="text-center mb-6">
+              <div className="text-5xl mb-3">🔔</div>
+              <h2 className="text-3xl font-bold mb-2">Pick your sound</h2>
+              <p className="text-gray-400">Plays when you complete a task.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              {SOUND_OPTIONS.map((s) => {
+                const selected = selectedSound === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => { setSelectedSound(s.id); playComplete(s.id); }}
+                    className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${
+                      selected ? 'bg-white/20' : 'border-white/10 bg-white/5 hover:bg-white/10'
+                    }`}
+                    style={selected ? { borderColor: theme.accent } : {}}
+                  >
+                    <span className="text-2xl shrink-0">{s.icon}</span>
+                    <div className="flex-1">
+                      <p className="font-semibold text-sm">{s.label}</p>
+                      <p className="text-xs text-gray-400">{s.desc}</p>
+                    </div>
+                    {selected && (
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: theme.accent }}>
+                        <Check size={12} className="text-white" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* DONE */}
         {effectiveStepKey === 'done' && (
           <div className="text-center">
@@ -360,6 +400,8 @@ export default function Onboarding({ onComplete, userId = 'frontend-user' }) {
                 ? 'Next'
                 : effectiveStepKey === 'theme'
                 ? 'Almost there'
+                : effectiveStepKey === 'sound'
+                ? "Let's go"
                 : 'Continue'}
               <ChevronRight size={16} />
             </button>
