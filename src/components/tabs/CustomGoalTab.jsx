@@ -39,7 +39,49 @@ export default function CustomGoalTab({ goal, userId, theme }) {
             <p className="text-sm text-gray-500">{goal.summary}</p>
           </div>
         </div>
+        {(goal.stage_label || goal.endpoint) && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {goal.stage_label && (
+              <span className="text-xs px-3 py-1 rounded-full font-medium" style={{ backgroundColor: `${accent}18`, color: accent }}>
+                Current stage: {goal.stage_label}
+              </span>
+            )}
+            {goal.endpoint && (
+              <span className="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-600 font-medium">
+                Endpoint: {goal.endpoint}
+              </span>
+            )}
+          </div>
+        )}
       </div>
+
+      {(goal.current_action || goal.milestones?.length > 0) && (
+        <div className="bg-white rounded-2xl shadow-sm p-5 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-dark text-sm">Progress Path</h2>
+            <span className="text-xs text-gray-400">{goal.progress_summary}</span>
+          </div>
+          {goal.current_action && (
+            <div className="rounded-xl p-4 mb-4" style={{ backgroundColor: `${accent}12` }}>
+              <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Current action from Today's Plan</p>
+              <p className="text-sm font-semibold text-dark">{goal.current_action.title}</p>
+              <p className="text-xs text-gray-500 mt-1">{goal.current_action.description}</p>
+            </div>
+          )}
+          {goal.milestones?.length > 0 && (
+            <div className="space-y-2">
+              {goal.milestones.map((milestone) => (
+                <div key={milestone.id} className={`flex items-center justify-between rounded-xl px-3 py-2 ${milestone.done ? 'bg-green-50' : 'bg-gray-50'}`}>
+                  <p className={`text-sm ${milestone.done ? 'text-green-700 font-medium' : 'text-dark'}`}>{milestone.title}</p>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${milestone.done ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
+                    {milestone.done ? 'Done' : 'Next up'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {loading && (
         <div className="bg-white rounded-2xl shadow-sm p-10 flex flex-col items-center gap-3 text-center">

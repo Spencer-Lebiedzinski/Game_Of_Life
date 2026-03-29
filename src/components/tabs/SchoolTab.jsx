@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { CheckCircle, Circle, Timer, AlertCircle, Plus } from 'lucide-react';
 import { useTabData } from '../../hooks/useTabData';
+import { normalizeSchoolData } from '../../utils/tabDataShapes';
 
 const priorityColors = {
   high:   'text-red-500 bg-red-50 border-red-200',
@@ -58,7 +59,7 @@ const PLANNING_CONTEXT = {
 };
 
 export default function SchoolTab({ profile, userId }) {
-  const [assignments, setAssignments] = useTabData(userId, 'school', []);
+  const [rawSchool, setRawSchool] = useTabData(userId, 'school', []);
   const [showAdd, setShowAdd]         = useState(false);
   const [newTitle, setNewTitle]       = useState('');
   const [newDue, setNewDue]           = useState('');
@@ -67,19 +68,34 @@ export default function SchoolTab({ profile, userId }) {
   const [timerSeconds, setTimerSeconds] = useState(0);
   const timerRef = useRef(null);
 
+  const schoolData = normalizeSchoolData(rawSchool);
+  const assignments = schoolData.assignments;
+
   // Clean up interval when component unmounts
   useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
   const toggleDone = (id) => {
-    setAssignments((prev) => prev.map((a) => (a.id === id ? { ...a, done: !a.done } : a)));
+    setRawSchool((prev) => {
+      const data = normalizeSchoolData(prev);
+      return {
+        ...data,
+        assignments: data.assignments.map((a) => (a.id === id ? { ...a, done: !a.done } : a)),
+      };
+    });
   };
 
   const handleAddAssignment = () => {
     if (!newTitle.trim()) return;
-    setAssignments((prev) => [
-      ...prev,
-      { id: Date.now(), title: newTitle.trim(), due: newDue || 'No date', progress: 0, done: false, priority: newPriority },
-    ]);
+    setRawSchool((prev) => {
+      const data = normalizeSchoolData(prev);
+      return {
+        ...data,
+        assignments: [
+          ...data.assignments,
+          { id: Date.now(), title: newTitle.trim(), due: newDue || 'No date', progress: 0, done: false, priority: newPriority },
+        ],
+      };
+    });
     setNewTitle('');
     setNewDue('');
     setNewPriority('medium');
@@ -236,7 +252,14 @@ export default function SchoolTab({ profile, userId }) {
                 </button>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2 flex-wrap">
-                    <p className={`font-medium text-sm ${a.done ? 'line-through text-gray-400' : 'text-dark'}`}>{a.title}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className={`font-medium text-sm ${a.done ? 'line-through text-gray-400' : 'text-dark'}`}>{a.title}</p>
+                      {a.from_today_plan && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">
+                          From Today's Plan
+                        </span>
+                      )}
+                    </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full border font-medium shrink-0 ${priorityColors[a.priority]}`}>
                       {a.priority}
                     </span>

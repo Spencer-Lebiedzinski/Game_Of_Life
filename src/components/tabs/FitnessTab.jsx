@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CheckCircle, Circle, Dumbbell, Plus } from 'lucide-react';
 import { useTabData } from '../../hooks/useTabData';
+import { normalizeFitnessData } from '../../utils/tabDataShapes';
 
 const WORKOUT_SUGGESTIONS = {
   strength: {
@@ -180,9 +181,12 @@ const typeColors = {
 };
 
 export default function FitnessTab({ profile, userId }) {
-  const [workouts, setWorkouts] = useTabData(userId, 'fitness', []);
+  const [rawFitness, setRawFitness] = useTabData(userId, 'fitness', []);
   const [showLog, setShowLog] = useState(false);
   const [newWorkout, setNewWorkout] = useState({ name: '', type: 'Cardio', duration: '' });
+  const fitnessData = normalizeFitnessData(rawFitness);
+  const workouts = fitnessData.workouts;
+  const plannedWorkouts = fitnessData.planned_workouts;
 
   const fitnessDetails = profile?.goalDetails?.fitness;
   const goal    = fitnessDetails?.[0];
@@ -198,22 +202,39 @@ export default function FitnessTab({ profile, userId }) {
   const percent = targetDays > 0 ? Math.round((completedWorkouts / targetDays) * 100) : 0;
 
   const toggleWorkout = (id) => {
-    setWorkouts((prev) => prev.map((w) => (w.id === id ? { ...w, done: !w.done } : w)));
+    setRawFitness((prev) => {
+      const data = normalizeFitnessData(prev);
+      const updateCollection = (items) => items.map((w) => (
+        w.id === id ? { ...w, done: !w.done } : w
+      ));
+      return {
+        ...data,
+        workouts: updateCollection(data.workouts),
+        planned_workouts: updateCollection(data.planned_workouts),
+      };
+    });
   };
 
   const handleAdd = () => {
     if (!newWorkout.name) return;
-    setWorkouts((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        name: newWorkout.name,
-        type: newWorkout.type,
-        duration: newWorkout.duration || '30 min',
-        date: 'Today',
-        done: false,
-      },
-    ]);
+    setRawFitness((prev) => {
+      const data = normalizeFitnessData(prev);
+      return {
+        ...data,
+        workouts: [
+          {
+            id: Date.now(),
+            name: newWorkout.name,
+            title: newWorkout.name,
+            type: newWorkout.type,
+            duration: newWorkout.duration || '30 min',
+            date: new Date().toISOString().slice(0, 10),
+            done: false,
+          },
+          ...data.workouts,
+        ],
+      };
+    });
     setNewWorkout({ name: '', type: 'Cardio', duration: '' });
     setShowLog(false);
   };
@@ -275,6 +296,48 @@ export default function FitnessTab({ profile, userId }) {
                     </li>
                   ))}
                 </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {plannedWorkouts.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm p-5 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-dark">From Today's Plan</h3>
+            <span className="text-xs text-gray-400">
+              {fitnessData.progress.completed_this_week ?? 0} done this week
+            </span>
+          </div>
+          <div className="space-y-3">
+            {plannedWorkouts.slice(0, 3).map((workout) => (
+              <div key={workout.id} className={`rounded-2xl border p-4 ${workout.done ? 'bg-green-50 border-green-100' : 'bg-gray-50 border-gray-100'}`}>
+                <div className="flex items-start gap-3">
+                  <button onClick={() => toggleWorkout(workout.id)} className="mt-0.5 shrink-0">
+                    {workout.done
+                      ? <CheckCircle size={22} className="text-accent" />
+                      : <Circle size={22} className="text-gray-300 hover:text-accent transition-colors" />}
+                  </button>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <p className={`font-medium text-sm ${workout.done ? 'line-through text-gray-400' : 'text-dark'}`}>
+                        {workout.title || workout.name}
+                      </p>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+                        From Today's Plan
+                      </span>
+                    </div>
+                    {workout.description && <p className="text-xs text-gray-500 mt-1">{workout.description}</p>}
+                    {Array.isArray(workout.exercises) && workout.exercises.length > 0 && (
+                      <ul className="mt-2 text-xs text-gray-500 space-y-1">
+                        {workout.exercises.slice(0, 4).map((exercise) => (
+                          <li key={exercise}>• {exercise}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
               </div>
             ))}
           </div>

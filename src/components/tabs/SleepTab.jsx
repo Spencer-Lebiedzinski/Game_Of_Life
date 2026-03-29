@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Moon, Plus, Trash2 } from 'lucide-react';
 import { useTabData } from '../../hooks/useTabData';
+import { normalizeSleepData } from '../../utils/tabDataShapes';
 
 const SLEEP_TIPS = {
   schedule: {
@@ -62,11 +63,15 @@ const QUALITY_COLORS = {
 const QUALITY_LABELS = { 1: 'Terrible', 2: 'Poor', 3: 'Okay', 4: 'Good', 5: 'Great' };
 
 export default function SleepTab({ profile, userId }) {
-  const [entries, setEntries] = useTabData(userId, 'sleep', []);
+  const [rawSleep, setRawSleep] = useTabData(userId, 'sleep', []);
   const [showAdd, setShowAdd] = useState(false);
   const [newHours, setNewHours]     = useState('');
   const [newQuality, setNewQuality] = useState(3);
   const [newNote, setNewNote]       = useState('');
+
+  const sleepData = normalizeSleepData(rawSleep);
+  const entries = sleepData.entries;
+  const actions = sleepData.actions;
 
   const sleepDetails = profile?.goalDetails?.sleep;
   const struggle   = sleepDetails?.[0];
@@ -83,14 +88,20 @@ export default function SleepTab({ profile, userId }) {
       note: newNote.trim(),
       date: new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
     };
-    setEntries((prev) => [entry, ...prev]);
+    setRawSleep((prev) => {
+      const data = normalizeSleepData(prev);
+      return { ...data, entries: [entry, ...data.entries] };
+    });
     setNewHours('');
     setNewQuality(3);
     setNewNote('');
     setShowAdd(false);
   };
 
-  const handleDelete = (id) => setEntries((prev) => prev.filter((e) => e.id !== id));
+  const handleDelete = (id) => setRawSleep((prev) => {
+    const data = normalizeSleepData(prev);
+    return { ...data, entries: data.entries.filter((e) => e.id !== id) };
+  });
 
   const avgHours  = entries.length > 0 ? (entries.reduce((s, e) => s + e.hours, 0) / entries.length).toFixed(1) : null;
   const avgQuality = entries.length > 0 ? (entries.reduce((s, e) => s + e.quality, 0) / entries.length).toFixed(1) : null;
@@ -174,6 +185,23 @@ export default function SleepTab({ profile, userId }) {
           <div className="flex gap-2 mt-3">
             <button onClick={handleAdd} className="bg-accent text-white px-4 py-2 rounded-xl text-sm font-medium hover:opacity-90">Add</button>
             <button onClick={() => setShowAdd(false)} className="bg-gray-100 text-gray-600 px-4 py-2 rounded-xl text-sm hover:bg-gray-200">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {actions.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm p-5 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-dark text-sm">From Today's Plan</h3>
+            <span className="text-xs text-gray-400">Logging streak: {sleepData.progress.logging_streak ?? 0}</span>
+          </div>
+          <div className="space-y-2">
+            {actions.slice(0, 3).map((action) => (
+              <div key={action.id} className={`rounded-xl p-3 border ${action.done ? 'bg-green-50 border-green-100' : 'bg-gray-50 border-gray-100'}`}>
+                <p className={`text-sm font-medium ${action.done ? 'line-through text-gray-400' : 'text-dark'}`}>{action.title}</p>
+                <p className="text-xs text-gray-400 mt-1">{action.description}</p>
+              </div>
+            ))}
           </div>
         </div>
       )}

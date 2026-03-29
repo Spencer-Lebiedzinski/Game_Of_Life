@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useTabData } from '../../hooks/useTabData';
+import { normalizeFinanceData } from '../../utils/tabDataShapes';
 
 const FINANCE_TIPS = {
   track: {
@@ -52,11 +53,15 @@ const MONEY_MINDSET_CONTEXT = {
 };
 
 export default function FinanceTab({ profile, userId }) {
-  const [expenses, setExpenses]   = useTabData(userId, 'finance', []);
+  const [rawFinance, setRawFinance] = useTabData(userId, 'finance', []);
   const [showAdd, setShowAdd]     = useState(false);
   const [newDesc, setNewDesc]     = useState('');
   const [newAmount, setNewAmount] = useState('');
   const [newCat, setNewCat]       = useState('Needs');
+
+  const financeData = normalizeFinanceData(rawFinance);
+  const expenses = financeData.expenses;
+  const actions = financeData.actions;
 
   const financeDetails = profile?.goalDetails?.finance;
   const challenge  = financeDetails?.[0];
@@ -66,17 +71,26 @@ export default function FinanceTab({ profile, userId }) {
 
   const handleAdd = () => {
     if (!newDesc.trim() || !newAmount) return;
-    setExpenses((prev) => [
-      ...prev,
-      { id: Date.now(), desc: newDesc.trim(), amount: parseFloat(newAmount), cat: newCat, date: 'Today' },
-    ]);
+    setRawFinance((prev) => {
+      const data = normalizeFinanceData(prev);
+      return {
+        ...data,
+        expenses: [
+          { id: Date.now(), desc: newDesc.trim(), amount: parseFloat(newAmount), cat: newCat, date: 'Today' },
+          ...data.expenses,
+        ],
+      };
+    });
     setNewDesc('');
     setNewAmount('');
     setNewCat('Needs');
     setShowAdd(false);
   };
 
-  const handleDelete = (id) => setExpenses((prev) => prev.filter((e) => e.id !== id));
+  const handleDelete = (id) => setRawFinance((prev) => {
+    const data = normalizeFinanceData(prev);
+    return { ...data, expenses: data.expenses.filter((e) => e.id !== id) };
+  });
 
   const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
 
@@ -123,6 +137,30 @@ export default function FinanceTab({ profile, userId }) {
                 <span className="font-semibold">Mindset: </span>{MONEY_MINDSET_CONTEXT[moneyMind]}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {actions.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm p-5 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-dark text-sm">From Today's Plan</h3>
+            <span className="text-xs text-gray-400">Complete these from the dashboard</span>
+          </div>
+          <div className="space-y-2">
+            {actions.slice(0, 3).map((action) => (
+              <div key={action.id} className={`rounded-xl p-3 border ${action.done ? 'bg-green-50 border-green-100' : 'bg-gray-50 border-gray-100'}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className={`text-sm font-medium ${action.done ? 'line-through text-gray-400' : 'text-dark'}`}>{action.title}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{action.description}</p>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">
+                    {action.done ? 'Completed' : 'Pending'}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

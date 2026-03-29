@@ -15,7 +15,7 @@ import SleepTab from './components/tabs/SleepTab';
 import PlanningTab from './components/tabs/PlanningTab';
 import CustomGoalTab from './components/tabs/CustomGoalTab';
 import LoginScreen from './auth/LoginScreen.jsx';
-import { weekTasks } from './data/mockData';
+import { normalizeCanvasSnapshot, normalizeFitnessData, normalizeSchoolData } from './utils/tabDataShapes';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -29,8 +29,8 @@ export default function App() {
   const [profile, setProfile] = useState(null);
   const [userStats, setUserStats] = useState(null);
   const [leaderboardRefreshKey, setLeaderboardRefreshKey] = useState(0);
+  const [planRefreshKey, setPlanRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [tasks, setTasks] = useState(weekTasks);
   const [selectedDay, setSelectedDay] = useState(getTodayKey());
   const [canvasConnected, setCanvasConnected] = useState(false);
   const [canvasDashboard, setCanvasDashboard] = useState(null);
@@ -40,8 +40,7 @@ export default function App() {
 
   const userId = user?.sub || 'frontend-user';
 
-  // On login, load existing profile from DB (skips onboarding for returning users)
-  useEffect(() => {
+  const loadProfile = async () => {
     if (!userId || userId === 'frontend-user') return;
 
     const THEMES = [
@@ -58,17 +57,28 @@ export default function App() {
       be_more_social: 'social', save_money: 'finance', sleep_better: 'sleep',
     };
 
-    fetch(`http://localhost:8000/api/onboarding/${userId}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!data) return;
-        const theme = THEMES.find((t) => t.id === data.theme?.id) || THEMES[0];
-        const goals = (data.goals ?? []).map((g) => BACKEND_TO_GOAL[g] ?? g);
-        setProfile({ ...data, goals, goalDetails: data.goal_details ?? {},
-                     customGoals: data.custom_goals ?? [], theme });
-        applyTheme(theme);
-      })
-      .catch(() => {});
+    try {
+      const response = await fetch(`http://localhost:8000/api/onboarding/${userId}`);
+      const data = response.ok ? await response.json() : null;
+      if (!data) return;
+      const theme = THEMES.find((t) => t.id === data.theme?.id) || THEMES[0];
+      const goals = (data.goals ?? []).map((g) => BACKEND_TO_GOAL[g] ?? g);
+      setProfile({
+        ...data,
+        goals,
+        goalDetails: data.goal_details ?? {},
+        customGoals: data.custom_goals ?? [],
+        theme,
+      });
+      applyTheme(theme);
+    } catch {
+      // no-op
+    }
+  };
+
+  // On login, load existing profile from DB (skips onboarding for returning users)
+  useEffect(() => {
+    loadProfile();
   }, [userId]);
 
   useEffect(() => {
@@ -107,11 +117,13 @@ export default function App() {
   const handleOnboardingComplete = (data) => {
     setProfile(data);
     applyTheme(data.theme);
+    setPlanRefreshKey((current) => current + 1);
   };
 
   const handleProfileUpdate = (updatedProfile) => {
     setProfile(updatedProfile);
     if (updatedProfile.theme) applyTheme(updatedProfile.theme);
+    setPlanRefreshKey((current) => current + 1);
   };
 
   const handleGoalCreated = (newCustomGoal) => {
@@ -119,6 +131,8 @@ export default function App() {
       ...prev,
       customGoals: [...(prev.customGoals ?? []), newCustomGoal],
     }));
+    setPlanRefreshKey((current) => current + 1);
+    loadProfile();
   };
 
   const refreshCanvasDashboard = async ({ showLoadingMessage = true } = {}) => {
@@ -143,6 +157,17 @@ export default function App() {
       setCanvasDashboard(data);
       setCanvasConnected(true);
       setCanvasMessage(`Last refreshed at ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`);
+      fetch(`http://localhost:8000/api/tab-data/${userId}/canvas`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: {
+            ...normalizeCanvasSnapshot(data),
+            last_synced_at: new Date().toISOString(),
+          },
+        }),
+      }).catch(() => {});
+      setPlanRefreshKey((current) => current + 1);
       return data;
     } catch (error) {
       setCanvasError(error.message || 'Could not refresh Canvas data.');
@@ -179,8 +204,60 @@ export default function App() {
 
   const handleAdd = (type, name) => {
     if (type === 'task') {
-      const newTask = { id: Date.now(), title: name, category: 'school', time: '', done: false };
-      setTasks((prev) => ({ ...prev, [selectedDay]: [...(prev[selectedDay] || []), newTask] }));
+      fetch(`http://localhost:8000/api/tab-data/${userId}/school`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((res) => {
+          const school = normalizeSchoolData(res?.data);
+          const next = {
+            ...school,
+            assignments: [
+              {
+                id: Date.now(),
+                title: name,
+                due: 'No date',
+                progress: 0,
+                done: false,
+                priority: 'medium',
+              },
+              ...school.assignments,
+            ],
+          };
+          return fetch(`http://localhost:8000/api/tab-data/${userId}/school`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: next }),
+          });
+        })
+        .then(() => setPlanRefreshKey((current) => current + 1))
+        .catch(() => {});
+    }
+
+    if (type === 'workout') {
+      fetch(`http://localhost:8000/api/tab-data/${userId}/fitness`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((res) => {
+          const fitness = normalizeFitnessData(res?.data);
+          const workout = {
+            id: Date.now(),
+            name,
+            title: name,
+            type: 'Cardio',
+            duration: '20 min',
+            date: new Date().toISOString().slice(0, 10),
+            done: false,
+          };
+          const next = {
+            ...fitness,
+            workouts: [workout, ...fitness.workouts],
+          };
+          return fetch(`http://localhost:8000/api/tab-data/${userId}/fitness`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: next }),
+          });
+        })
+        .then(() => setPlanRefreshKey((current) => current + 1))
+        .catch(() => {});
     }
   };
 
@@ -200,16 +277,17 @@ export default function App() {
       case 'dashboard':
         return (
           <Dashboard
-            tasks={tasks}
-            setTasks={setTasks}
             selectedDay={selectedDay}
             setSelectedDay={setSelectedDay}
             userName={profile.name}
             theme={profile.theme}
             userStats={userStats}
             userId={userId}
+            profile={profile}
             onXpAwarded={refreshStats}
+            onPlanUpdated={loadProfile}
             leaderboardRefreshKey={leaderboardRefreshKey}
+            planRefreshKey={planRefreshKey}
             canvasConnected={canvasConnected}
             canvasDashboard={canvasDashboard}
             canvasLoading={canvasLoading}

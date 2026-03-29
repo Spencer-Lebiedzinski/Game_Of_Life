@@ -1,4 +1,5 @@
-import { RefreshCw } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Lock, RefreshCw } from 'lucide-react';
 import WeeklyCalendar from './WeeklyCalendar';
 import TaskList from './TaskList';
 import LifeScore from './LifeScore';
@@ -21,16 +22,17 @@ function formatDueDate(value) {
 }
 
 export default function Dashboard({
-  tasks,
-  setTasks,
   selectedDay,
   setSelectedDay,
   userName,
   theme,
   userStats,
   userId,
+  profile,
   onXpAwarded,
+  onPlanUpdated,
   leaderboardRefreshKey,
+  planRefreshKey,
   canvasConnected,
   canvasDashboard,
   canvasLoading,
@@ -38,9 +40,32 @@ export default function Dashboard({
   canvasError,
   onRefreshCanvas,
 }) {
+  const [weekPlans, setWeekPlans] = useState({});
+  const [loadingPlan, setLoadingPlan] = useState(false);
+  const [planError, setPlanError] = useState('');
+
+  const getWeekDates = () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const mondayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const monday = new Date(today);
+    monday.setHours(0, 0, 0, 0);
+    monday.setDate(today.getDate() - mondayIndex);
+    return DAYS.reduce((acc, day, index) => {
+      const value = new Date(monday);
+      value.setDate(monday.getDate() + index);
+      acc[day] = value.toISOString().slice(0, 10);
+      return acc;
+    }, {});
+  };
+
   const today = new Date();
   const dayOfWeek = today.getDay();
   const todayName = DAYS[dayOfWeek === 0 ? 6 : dayOfWeek - 1];
+  const weekDates = useMemo(() => getWeekDates(), []);
+  const selectedDate = weekDates[selectedDay];
+  const todayDate = weekDates[todayName];
+  const isSelectedToday = selectedDate === todayDate;
 
   const todayFormatted = today.toLocaleDateString('en-US', {
     weekday: 'long',
@@ -49,21 +74,73 @@ export default function Dashboard({
   });
 
   const taskCounts = Object.fromEntries(
-    Object.entries(tasks).map(([day, t]) => [day, t.length])
+    DAYS.map((day) => [day, weekPlans[day]?.tasks?.length || 0]),
   );
 
-  const dayTasks = tasks[selectedDay] || [];
+  const dayTasks = weekPlans[selectedDay]?.tasks || [];
   const completedCount = dayTasks.filter((t) => t.done).length;
-  const todayTasks = tasks[todayName] || [];
+  const todayTasks = weekPlans[todayName]?.tasks || [];
   const courses = canvasDashboard?.courses ?? [];
+  const completedCanvasIds = new Set(
+    (weekPlans[todayName]?.tasks || [])
+      .filter((task) => task.domain === 'canvas' && task.done)
+      .map((task) => task.source_record_id),
+  );
 
-  const handleToggle = (taskId) => {
-    setTasks((prev) => ({
-      ...prev,
-      [selectedDay]: prev[selectedDay].map((t) =>
-        t.id === taskId ? { ...t, done: !t.done } : t
-      ),
-    }));
+  const loadWeekPlans = async ({ regenerateToday = false } = {}) => {
+    if (!userId || userId === 'frontend-user') return;
+    setLoadingPlan(true);
+    setPlanError('');
+    try {
+      if (regenerateToday) {
+        await fetch('http://localhost:8000/api/daily-plan/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: userId, date: todayDate }),
+        });
+      }
+
+      const entries = await Promise.all(
+        DAYS.map(async (day) => {
+          const response = await fetch(`http://localhost:8000/api/daily-plan/${userId}?date=${weekDates[day]}`);
+          const data = response.ok ? await response.json() : { tasks: [] };
+          return [day, data];
+        }),
+      );
+      setWeekPlans(Object.fromEntries(entries));
+    } catch {
+      setPlanError('Could not load today\'s plan right now.');
+    } finally {
+      setLoadingPlan(false);
+    }
+  };
+
+  useEffect(() => {
+    loadWeekPlans({ regenerateToday: true });
+  }, [userId, planRefreshKey]);
+
+  const handleToggle = async (taskId) => {
+    if (!isSelectedToday) return;
+    try {
+      const response = await fetch('http://localhost:8000/api/daily-plan/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, task_id: taskId, date: selectedDate }),
+      });
+      if (!response.ok) {
+        throw new Error();
+      }
+      const data = await response.json();
+      setWeekPlans((prev) => ({
+        ...prev,
+        [selectedDay]: data.plan,
+      }));
+      onXpAwarded?.();
+      onPlanUpdated?.();
+      loadWeekPlans();
+    } catch {
+      setPlanError('Could not mark that task complete.');
+    }
   };
 
   const accent = theme?.accent || '#2DD4BF';
@@ -112,7 +189,18 @@ export default function Dashboard({
                 </div>
               )}
             </div>
-            <TaskList tasks={dayTasks} onToggle={handleToggle} />
+            {!isSelectedToday && (
+              <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2 mb-3">
+                <Lock size={12} />
+                Past and future plan days are view-only. Only today can be checked off.
+              </div>
+            )}
+            {planError && (
+              <div className="text-xs text-red-600 bg-red-50 rounded-xl px-3 py-2 mb-3">
+                {planError}
+              </div>
+            )}
+            <TaskList tasks={dayTasks} onToggle={handleToggle} disableToggle={!isSelectedToday} loading={loadingPlan && dayTasks.length === 0} />
           </div>
 
           {/* Quick stats row */}
@@ -130,7 +218,6 @@ export default function Dashboard({
           </div>
 
           {/* Study Mode */}
-          <StudyMode theme={theme} userId={userId} onXpAwarded={onXpAwarded} />
           <StudyMode theme={theme} userId={userId} onXpAwarded={onXpAwarded} />
 
           <div className="bg-white rounded-2xl shadow-sm p-5">
@@ -218,9 +305,16 @@ export default function Dashboard({
                             <div key={assignment.id} className="rounded-xl bg-gray-50 px-3 py-2">
                               <div className="flex items-center justify-between gap-2">
                                 <p className="text-sm font-medium text-dark">{assignment.name || 'Untitled assignment'}</p>
-                                <span className={`text-xs font-medium ${assignment.submission?.missing ? 'text-red-600' : 'text-gray-500'}`}>
-                                  {formatDueDate(assignment.due_at)}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  {completedCanvasIds.has(`${course.id}:${assignment.id}`) && (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+                                      Done in Today&apos;s Plan
+                                    </span>
+                                  )}
+                                  <span className={`text-xs font-medium ${assignment.submission?.missing ? 'text-red-600' : 'text-gray-500'}`}>
+                                    {formatDueDate(assignment.due_at)}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           ))
@@ -238,7 +332,7 @@ export default function Dashboard({
         <div className="lg:col-span-1 space-y-4">
           <LifeScore userStats={userStats} />
           <GroupLeaderboardPanel userId={userId} theme={theme} refreshKey={leaderboardRefreshKey} />
-          <VoiceCoach tasks={todayTasks} userName={userName} theme={theme} />
+          <VoiceCoach tasks={selectedDay === todayName ? todayTasks : dayTasks} userName={userName} theme={theme} />
         </div>
       </div>
     </div>

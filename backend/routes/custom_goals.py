@@ -8,6 +8,36 @@ from services.gemini_service import research_custom_goal, get_custom_goal_insigh
 router = APIRouter()
 
 
+def default_custom_goal_progress(label: str) -> dict:
+    lowered = label.lower()
+    if any(keyword in lowered for keyword in ["internship", "job", "career", "resume", "interview", "offer"]):
+        stages = [
+            {"id": "target_definition", "title": "Define your target", "done": False},
+            {"id": "resume_portfolio", "title": "Build your resume and portfolio", "done": False},
+            {"id": "sourcing_roles", "title": "Find strong opportunities", "done": False},
+            {"id": "applications", "title": "Apply consistently", "done": False},
+            {"id": "interview_prep", "title": "Prepare for interviews", "done": False},
+            {"id": "offer_decision", "title": "Close the loop", "done": False},
+        ]
+    else:
+        stages = [
+            {"id": "setup", "title": "Define the path", "done": False},
+            {"id": "foundation", "title": "Build the foundation", "done": False},
+            {"id": "execution", "title": "Execute consistently", "done": False},
+            {"id": "finish", "title": "Finish strong", "done": False},
+        ]
+    return {
+        "endpoint": label,
+        "stage": stages[0]["id"],
+        "stage_label": stages[0]["title"],
+        "stage_index": 0,
+        "milestones": stages,
+        "action_history": [],
+        "current_action": None,
+        "progress_summary": f"Current stage: {stages[0]['title']}",
+    }
+
+
 class ResearchRequest(BaseModel):
     user_id: str
     goal_text: str
@@ -42,6 +72,7 @@ async def research_goal(req: ResearchRequest):
         "questions": data["questions"],
         "answers": [],
         "created_at": datetime.now(timezone.utc).isoformat(),
+        **default_custom_goal_progress(data["label"]),
     }
 
     # Save the stub so it exists before answers are submitted
@@ -50,8 +81,21 @@ async def research_goal(req: ResearchRequest):
         {"$push": {"custom_goals": stub}},
     )
 
-    return {"goal_id": goal_id, "label": stub["label"], "icon": stub["icon"],
-            "summary": stub["summary"], "questions": stub["questions"]}
+    return {
+        "goal_id": goal_id,
+        "label": stub["label"],
+        "icon": stub["icon"],
+        "summary": stub["summary"],
+        "questions": stub["questions"],
+        "endpoint": stub["endpoint"],
+        "stage": stub["stage"],
+        "stage_label": stub["stage_label"],
+        "stage_index": stub["stage_index"],
+        "milestones": stub["milestones"],
+        "action_history": stub["action_history"],
+        "current_action": stub["current_action"],
+        "progress_summary": stub["progress_summary"],
+    }
 
 
 @router.post("/goals/custom/answers")

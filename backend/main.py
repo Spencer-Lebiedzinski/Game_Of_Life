@@ -11,6 +11,7 @@ from routes.stats import router as stats_router
 from routes.custom_goals import router as custom_goals_router
 from routes.tab_data import router as tab_data_router
 from routes.social import router as social_router
+from routes.daily_plan import router as daily_plan_router
 
 app = FastAPI(title="Game of Life API")
 
@@ -30,3 +31,4 @@ app.include_router(stats_router, prefix="/api")
 app.include_router(custom_goals_router, prefix="/api")
 app.include_router(tab_data_router, prefix="/api")
 app.include_router(social_router, prefix="/api")
+app.include_router(daily_plan_router, prefix="/api")

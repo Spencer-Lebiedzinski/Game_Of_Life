@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CheckCircle, RefreshCw } from 'lucide-react';
 import { useTabData } from '../../hooks/useTabData';
+import { normalizeMindsetData } from '../../utils/tabDataShapes';
 
 const moods = [
   { emoji: '😔', label: 'Low',     value: 1 },
@@ -63,19 +64,21 @@ const OVERWHELM_CONTEXT = {
 };
 
 export default function MindsetTab({ profile, userId }) {
-  const [persisted, setPersisted] = useTabData(userId, 'mindset', {
+  const [rawPersisted, setPersisted] = useTabData(userId, 'mindset', {
     reflection: '',
     gratitude: ['', '', ''],
     intention: '',
   });
   const [selectedMood, setSelectedMood] = useState(3);
   const [promptIdx, setPromptIdx]       = useState(0);
-  const [promptDone, setPromptDone]     = useState(false);
   const [saved, setSaved]               = useState(false);
+  const persisted = normalizeMindsetData(rawPersisted);
 
   const reflection = persisted.reflection ?? '';
   const gratitude  = persisted.gratitude  ?? ['', '', ''];
   const intention  = persisted.intention  ?? '';
+  const todaysPrompt = persisted.prompts?.[0];
+  const promptDone = Boolean(todaysPrompt?.done);
 
   const setReflection = (val) => setPersisted((p) => ({ ...p, reflection: val }));
   const setGratitude  = (updater) => setPersisted((p) => ({
@@ -92,8 +95,8 @@ export default function MindsetTab({ profile, userId }) {
   const prompts     = MINDSET_PROMPTS[mindsetGoal] ?? DEFAULT_PROMPTS;
 
   const nextPrompt = () => {
+    if (todaysPrompt) return;
     setPromptIdx((i) => (i + 1) % prompts.length);
-    setPromptDone(false);
   };
 
   const handleSave = () => {
@@ -140,18 +143,23 @@ export default function MindsetTab({ profile, userId }) {
           </div>
           <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl p-5 mb-4 border border-purple-100">
             <p className="text-lg font-medium text-dark text-center">
-              {prompts[promptIdx % prompts.length]}
+              {todaysPrompt?.prompt || prompts[promptIdx % prompts.length]}
             </p>
           </div>
           <button
-            onClick={() => setPromptDone(!promptDone)}
+            disabled
             className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all ${
-              promptDone ? 'bg-accent text-white' : 'bg-gray-100 text-gray-600 hover:bg-primary hover:text-dark'
+              promptDone ? 'bg-accent text-white' : 'bg-gray-100 text-gray-500'
             }`}
           >
             <CheckCircle size={16} />
-            {promptDone ? 'Done! +50 XP' : 'Mark Complete'}
+            {promptDone ? 'Done in Today\'s Plan' : todaysPrompt ? 'Complete from Today\'s Plan' : 'Use Today\'s Plan to complete this'}
           </button>
+          {todaysPrompt && (
+            <p className="text-xs text-gray-400 text-center mt-2">
+              This prompt is linked to the dashboard and stays synced here.
+            </p>
+          )}
         </div>
 
         {/* Mood Tracker */}

@@ -78,6 +78,14 @@ export default function PlanningTab({ profile, userId, onGoalCreated }) {
         summary: researchData.summary,
         questions: researchData.questions,
         answers,
+        endpoint: researchData.endpoint,
+        stage: researchData.stage,
+        stage_label: researchData.stage_label,
+        stage_index: researchData.stage_index,
+        milestones: researchData.milestones,
+        action_history: researchData.action_history,
+        current_action: researchData.current_action,
+        progress_summary: researchData.progress_summary,
       };
       onGoalCreated(newGoal);
       setView('done');

@@ -1,7 +1,15 @@
 import { Check, Clock } from 'lucide-react';
 import { categoryColors } from '../data/mockData';
 
-export default function TaskList({ tasks, onToggle }) {
+export default function TaskList({ tasks, onToggle, disableToggle = false, loading = false }) {
+  if (loading) {
+    return (
+      <div className="text-center py-8 text-gray-400">
+        <p className="text-sm">Loading plan...</p>
+      </div>
+    );
+  }
+
   if (!tasks || tasks.length === 0) {
     return (
       <div className="text-center py-8 text-gray-400">
@@ -17,8 +25,10 @@ export default function TaskList({ tasks, onToggle }) {
         return (
           <div
             key={task.id}
-            onClick={() => onToggle(task.id)}
-            className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all hover:shadow-sm ${
+            onClick={() => !disableToggle && onToggle(task.id)}
+            className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
+              disableToggle ? 'cursor-default' : 'cursor-pointer hover:shadow-sm'
+            } ${
               task.done ? 'bg-gray-50 opacity-70' : 'bg-white border border-gray-100'
             }`}
           >
@@ -38,6 +48,11 @@ export default function TaskList({ tasks, onToggle }) {
               <p className={`text-sm font-medium truncate ${task.done ? 'line-through text-gray-400' : 'text-dark'}`}>
                 {task.title}
               </p>
+              {task.description && (
+                <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
+                  {task.description}
+                </p>
+              )}
               {task.time && (
                 <div className="flex items-center gap-1 mt-0.5">
                   <Clock size={11} className="text-gray-400" />
