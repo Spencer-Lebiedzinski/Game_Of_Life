@@ -1,13 +1,11 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
+from db import get_db
+from services.stats_service import award_xp
 
 router = APIRouter()
-
-# In-memory store — swap with Supabase insert later
-# keyed by user_id, stores list of checkins (most recent first)
-checkins: dict[str, list] = {}
 
 
 class CheckinPayload(BaseModel):
@@ -38,31 +36,43 @@ class CheckinEntry(BaseModel):
 
 
 @router.post("/checkin", response_model=CheckinEntry, status_code=201)
-def submit_checkin(payload: CheckinPayload):
-    entry = CheckinEntry(
-        user_id=payload.user_id,
-        timestamp=datetime.utcnow().isoformat(),
-        studied=payload.studied,
-        study_hours=payload.study_hours,
-        mood=payload.mood,
-        exercised=payload.exercised,
-        sleep_hours=payload.sleep_hours,
-        ate_well=payload.ate_well,
-        screen_time_hours=payload.screen_time_hours,
-        spent_money=payload.spent_money,
-        notes=payload.notes,
-    )
+async def submit_checkin(payload: CheckinPayload):
+    db = get_db()
+    entry = {
+        "user_id": payload.user_id,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "studied": payload.studied,
+        "study_hours": payload.study_hours,
+        "mood": payload.mood,
+        "exercised": payload.exercised,
+        "sleep_hours": payload.sleep_hours,
+        "ate_well": payload.ate_well,
+        "screen_time_hours": payload.screen_time_hours,
+        "spent_money": payload.spent_money,
+        "notes": payload.notes,
+    }
+    await db.checkins.insert_one({**entry})
 
-    if payload.user_id not in checkins:
-        checkins[payload.user_id] = []
+    # Award XP for checking in; bonus for exercising or studying
+    xp = 50
+    if payload.exercised:
+        xp += 25
+    if payload.studied:
+        xp += 25
+    await award_xp(payload.user_id, xp, "checkin")
 
-    checkins[payload.user_id].insert(0, entry.model_dump())
-    return entry
+    return CheckinEntry(**entry)
 
 
 @router.get("/checkin/{user_id}")
-def get_checkins(user_id: str, limit: int = 7):
-    user_checkins = checkins.get(user_id, [])
-    if not user_checkins:
+async def get_checkins(user_id: str, limit: int = 7):
+    db = get_db()
+    cursor = db.checkins.find(
+        {"user_id": user_id},
+        {"_id": 0}
+    ).sort("timestamp", -1).limit(limit)
+
+    results = await cursor.to_list(length=limit)
+    if not results:
         raise HTTPException(status_code=404, detail="No check-ins found for this user.")
-    return user_checkins[:limit]
+    return results

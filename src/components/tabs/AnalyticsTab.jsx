@@ -1,17 +1,35 @@
+import { useState, useEffect } from 'react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Area, AreaChart
 } from 'recharts';
-import { analyticsData } from '../../data/mockData';
+
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const EMPTY = DAYS.map((d) => ({ day: d, value: 0 }));
 
 const insights = [
-  { title: "Peak Productivity", text: "You're most productive on Wednesdays. Schedule your hardest tasks then.", icon: "📈" },
-  { title: "Sleep Trend", text: "Your sleep improved 15% this week. Keep maintaining that 8-hour goal!", icon: "😴" },
-  { title: "Fitness Consistency", text: "You hit 3/5 workouts. Try adding a short walk on low-energy days.", icon: "💪" },
-  { title: "Weekend Dip", text: "Productivity drops on weekends. Consider lighter tasks to keep momentum.", icon: "🎯" },
+  { title: "Check In Daily", text: "Log your day each evening to unlock richer analytics over time.", icon: "📈" },
+  { title: "Sleep Goal", text: "Aim for 7-9 hours each night. Consistent sleep drives better focus.", icon: "😴" },
+  { title: "Fitness Streak", text: "Even one workout logged counts. Small habits compound over weeks.", icon: "💪" },
+  { title: "Study Hours", text: "4+ hours of focused study counts as 100% productivity. Start there.", icon: "🎯" },
 ];
 
-export default function AnalyticsTab() {
+export default function AnalyticsTab({ userId }) {
+  const [chartData, setChartData] = useState(null);
+
+  useEffect(() => {
+    if (!userId || userId === 'frontend-user') return;
+    fetch(`http://localhost:8000/api/stats/charts/${userId}`)
+      .then((r) => r.json())
+      .then(setChartData)
+      .catch(() => {});
+  }, [userId]);
+
+  const productivity = chartData?.productivity ?? EMPTY;
+  const fitness      = chartData?.fitness      ?? EMPTY;
+  const sleep        = chartData?.sleep        ?? EMPTY;
+  const hasData      = chartData?.has_data     ?? false;
+
   return (
     <div className="p-4 max-w-7xl mx-auto">
       <div className="mb-6">
@@ -19,13 +37,19 @@ export default function AnalyticsTab() {
         <p className="text-gray-500 text-sm">Your weekly progress at a glance</p>
       </div>
 
+      {!hasData && (
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-sm text-blue-700 mb-4">
+          No check-ins yet — complete your first daily check-in to see real analytics here.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Productivity */}
         <div className="bg-white rounded-2xl shadow-sm p-5">
           <h3 className="font-semibold text-dark text-sm mb-1">Productivity</h3>
-          <p className="text-xs text-gray-400 mb-4">Task completion rate this week</p>
+          <p className="text-xs text-gray-400 mb-4">Study hours (% of 4h goal)</p>
           <ResponsiveContainer width="100%" height={160}>
-            <AreaChart data={analyticsData.productivity}>
+            <AreaChart data={productivity}>
               <defs>
                 <linearGradient id="gradProd" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#6EE7B7" stopOpacity={0.4} />
@@ -49,7 +73,7 @@ export default function AnalyticsTab() {
           <h3 className="font-semibold text-dark text-sm mb-1">Fitness Activity</h3>
           <p className="text-xs text-gray-400 mb-4">Daily activity score this week</p>
           <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={analyticsData.fitness} barSize={20}>
+            <BarChart data={fitness} barSize={20}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
               <XAxis dataKey="day" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis hide />
@@ -67,7 +91,7 @@ export default function AnalyticsTab() {
           <h3 className="font-semibold text-dark text-sm mb-1">Sleep Hours</h3>
           <p className="text-xs text-gray-400 mb-4">Hours of sleep per night</p>
           <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={analyticsData.sleep}>
+            <LineChart data={sleep}>
               <defs>
                 <linearGradient id="gradSleep" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#FCD34D" stopOpacity={0.3} />

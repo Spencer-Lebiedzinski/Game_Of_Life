@@ -1,24 +1,83 @@
 import { useState } from 'react';
 import { CheckCircle, RefreshCw } from 'lucide-react';
-import { mindsetPrompts } from '../../data/mockData';
 
 const moods = [
-  { emoji: '😔', label: 'Low', value: 1 },
-  { emoji: '😐', label: 'Okay', value: 2 },
-  { emoji: '🙂', label: 'Good', value: 3 },
-  { emoji: '😊', label: 'Great', value: 4 },
+  { emoji: '😔', label: 'Low',     value: 1 },
+  { emoji: '😐', label: 'Okay',    value: 2 },
+  { emoji: '🙂', label: 'Good',    value: 3 },
+  { emoji: '😊', label: 'Great',   value: 4 },
   { emoji: '🤩', label: 'Amazing', value: 5 },
 ];
 
-export default function MindsetTab() {
+const MINDSET_PROMPTS = {
+  stress: [
+    'What drained you most today — and can you reduce it tomorrow?',
+    'Name one thing you can let go of right now.',
+    'What would your calmest self tell you today?',
+  ],
+  sleep: [
+    'What will you do differently tonight to sleep better?',
+    'Rate your energy today 1–10. What affected it most?',
+    'What can you cut from your evening to protect your sleep?',
+  ],
+  journal: [
+    'What\'s one moment today worth remembering?',
+    'What did you learn about yourself this week?',
+    'If today was a chapter in your life story, what would it be called?',
+  ],
+  motivation: [
+    'What\'s one small win from today, however tiny?',
+    'What would tomorrow look like if you were fully motivated?',
+    'What\'s the one thing you keep avoiding that would change everything?',
+  ],
+};
+
+const DEFAULT_PROMPTS = [
+  'What went well today?',
+  'What would you do differently?',
+  'What are you grateful for right now?',
+  'What\'s one thing you can do tomorrow to move forward?',
+  'How did you take care of yourself today?',
+];
+
+const MINDSET_CONTEXT = {
+  stress:     { headline: 'Stress Reduction', tip: 'Stress compounds when unnamed. Writing it down tends to shrink it.' },
+  sleep:      { headline: 'Sleep & Recovery', tip: 'What you think about before bed sets your nervous system state for the night.' },
+  journal:    { headline: 'Reflection Practice', tip: 'The goal isn\'t perfect prose — it\'s honest observation.' },
+  motivation: { headline: 'Building Momentum', tip: 'Motivation follows action, not the other way around. Start small.' },
+};
+
+const COPING_CONTEXT = {
+  exercise: '💪 Movement is your go-to — scheduling it before stress hits, not after, tends to work better.',
+  talk:     '💬 You process by talking — identifying one person you can reliably call on hard days helps.',
+  media:    '📱 Distraction works short-term. Having one active coping tool ready for hard days is worth building.',
+  nothing:  '🌀 Try 4-7-8 breathing when overwhelm hits: inhale 4s → hold 7s → exhale 8s.',
+};
+
+const OVERWHELM_CONTEXT = {
+  rarely:    'You handle pressure well. Mindset work at this level is about staying sharp, not firefighting.',
+  sometimes: 'Occasional overwhelm is normal. Building a short reset routine for bad days is worth having.',
+  often:     'Frequent overwhelm can signal too much input. Pruning one commitment is often more effective than adding another habit.',
+  always:    'Constant overwhelm deserves real attention — one fewer commitment this week might matter more than any new technique.',
+};
+
+export default function MindsetTab({ profile }) {
   const [selectedMood, setSelectedMood] = useState(3);
-  const [reflection, setReflection] = useState('');
-  const [promptIdx, setPromptIdx] = useState(0);
-  const [promptDone, setPromptDone] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [reflection, setReflection]     = useState('');
+  const [promptIdx, setPromptIdx]       = useState(0);
+  const [promptDone, setPromptDone]     = useState(false);
+  const [saved, setSaved]               = useState(false);
+  const [gratitude, setGratitude]       = useState(['', '', '']);
+
+  const mindsetDetails = profile?.goalDetails?.mindset;
+  const mindsetGoal = mindsetDetails?.[0];
+  const copingStyle = mindsetDetails?.[1];
+  const overwhelm   = mindsetDetails?.[2];
+  const context     = MINDSET_CONTEXT[mindsetGoal] ?? null;
+  const prompts     = MINDSET_PROMPTS[mindsetGoal] ?? DEFAULT_PROMPTS;
 
   const nextPrompt = () => {
-    setPromptIdx((i) => (i + 1) % mindsetPrompts.length);
+    setPromptIdx((i) => (i + 1) % prompts.length);
     setPromptDone(false);
   };
 
@@ -34,32 +93,45 @@ export default function MindsetTab() {
         <p className="text-gray-500 text-sm">Daily prompts, mood tracking & reflection</p>
       </div>
 
+      {/* Personalized context card */}
+      {context && (
+        <div className="bg-white rounded-2xl shadow-sm p-5 mb-4 border-l-4 border-purple-400">
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Based on what you shared</span>
+          <h2 className="text-lg font-bold text-dark mt-1 mb-1">{context.headline}</h2>
+          <p className="text-sm text-gray-500 italic mb-3">"{context.tip}"</p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            {copingStyle && COPING_CONTEXT[copingStyle] && (
+              <div className="flex-1 bg-gray-50 rounded-xl px-3 py-2 text-xs text-gray-600">
+                <span className="font-semibold text-dark">Coping style: </span>{COPING_CONTEXT[copingStyle]}
+              </div>
+            )}
+            {overwhelm && OVERWHELM_CONTEXT[overwhelm] && (
+              <div className="flex-1 bg-purple-50 rounded-xl px-3 py-2 text-xs text-purple-800">
+                <span className="font-semibold">Overwhelm: </span>{OVERWHELM_CONTEXT[overwhelm]}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Daily Prompt */}
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-dark">Daily Challenge</h3>
-            <button
-              onClick={nextPrompt}
-              className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
-              title="Next prompt"
-            >
+            <h3 className="font-semibold text-dark">Daily Prompt</h3>
+            <button onClick={nextPrompt} className="p-2 rounded-xl hover:bg-gray-100 transition-colors" title="Next prompt">
               <RefreshCw size={16} className="text-gray-500" />
             </button>
           </div>
-
           <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl p-5 mb-4 border border-purple-100">
             <p className="text-lg font-medium text-dark text-center">
-              {mindsetPrompts[promptIdx]}
+              {prompts[promptIdx % prompts.length]}
             </p>
           </div>
-
           <button
             onClick={() => setPromptDone(!promptDone)}
             className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all ${
-              promptDone
-                ? 'bg-accent text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-primary hover:text-dark'
+              promptDone ? 'bg-accent text-white' : 'bg-gray-100 text-gray-600 hover:bg-primary hover:text-dark'
             }`}
           >
             <CheckCircle size={16} />
@@ -88,13 +160,8 @@ export default function MindsetTab() {
               </button>
             ))}
           </div>
-
-          {/* Mood slider */}
           <input
-            type="range"
-            min={1}
-            max={5}
-            value={selectedMood}
+            type="range" min={1} max={5} value={selectedMood}
             onChange={(e) => setSelectedMood(Number(e.target.value))}
             className="w-full accent-yellow-400 h-2"
           />
@@ -119,11 +186,7 @@ export default function MindsetTab() {
             <span className="text-xs text-gray-400">{reflection.length} characters</span>
             <button
               onClick={handleSave}
-              className={`px-5 py-2 rounded-xl text-sm font-medium transition-all ${
-                saved
-                  ? 'bg-accent text-white'
-                  : 'bg-dark text-white hover:opacity-90'
-              }`}
+              className={`px-5 py-2 rounded-xl text-sm font-medium transition-all ${saved ? 'bg-accent text-white' : 'bg-dark text-white hover:opacity-90'}`}
             >
               {saved ? 'Saved!' : 'Save Entry'}
             </button>
@@ -134,14 +197,16 @@ export default function MindsetTab() {
         <div className="bg-gradient-to-br from-green-50 to-teal-50 rounded-2xl p-5 border border-green-100">
           <h3 className="font-semibold text-dark mb-3">3 Good Things Today</h3>
           <div className="space-y-2">
-            {[1, 2, 3].map((n) => (
-              <div key={n} className="flex items-center gap-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-2">
                 <span className="w-6 h-6 bg-white rounded-full flex items-center justify-center text-xs font-bold text-accent shadow-sm shrink-0">
-                  {n}
+                  {i + 1}
                 </span>
                 <input
                   type="text"
-                  placeholder={`Something good #${n}...`}
+                  value={gratitude[i]}
+                  onChange={(e) => setGratitude((prev) => { const n = [...prev]; n[i] = e.target.value; return n; })}
+                  placeholder={`Something good #${i + 1}...`}
                   className="flex-1 bg-white border border-green-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-accent"
                 />
               </div>
@@ -149,23 +214,15 @@ export default function MindsetTab() {
           </div>
         </div>
 
-        {/* Social prompt */}
+        {/* Intention */}
         <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-5 border border-purple-100">
-          <h3 className="font-semibold text-dark mb-3">Social Connection</h3>
-          <div className="space-y-2">
-            {[
-              { text: "Compliment someone", done: false },
-              { text: "Talk to a friend", done: true },
-              { text: "Help someone today", done: false },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3 bg-white rounded-xl px-3 py-2.5 border border-purple-100">
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${item.done ? 'bg-accent' : 'border-2 border-gray-200'}`}>
-                  {item.done && <span className="text-white text-xs">✓</span>}
-                </div>
-                <span className={`text-sm ${item.done ? 'line-through text-gray-400' : 'text-dark'}`}>{item.text}</span>
-              </div>
-            ))}
-          </div>
+          <h3 className="font-semibold text-dark mb-1">Tomorrow's Intention</h3>
+          <p className="text-xs text-gray-400 mb-3">One thing you want to focus on tomorrow.</p>
+          <textarea
+            rows={4}
+            placeholder="Tomorrow I want to..."
+            className="w-full bg-white border border-purple-100 rounded-xl p-3 text-sm focus:outline-none focus:border-accent resize-none text-dark placeholder-gray-400"
+          />
         </div>
       </div>
     </div>
