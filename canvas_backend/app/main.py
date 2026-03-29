@@ -5,6 +5,7 @@ from datetime import datetime
 
 from app.config import settings
 from app.routes.canvas import router as canvas_router
+from app.routes.goals import router as goals_router
 from app.services.token_store import init_db
 
 app = FastAPI(title=settings.app_name, debug=settings.app_debug)
@@ -49,3 +50,4 @@ def health_summary():
     return latest_health_data
 
 app.include_router(canvas_router)
+app.include_router(goals_router)

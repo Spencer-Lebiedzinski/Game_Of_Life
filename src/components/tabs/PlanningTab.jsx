@@ -68,7 +68,15 @@ export default function PlanningTab({ profile, userId, onGoalCreated }) {
       await fetch('http://localhost:8000/api/goals/custom/answers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, goal_id: researchData.goal_id, answers }),
+        body: JSON.stringify({
+          user_id: userId,
+          goal_id: researchData.goal_id,
+          label: researchData.label,
+          icon: researchData.icon,
+          summary: researchData.summary,
+          questions: researchData.questions,
+          answers,
+        }),
       });
       // Build the full custom goal object for the profile
       const newGoal = {

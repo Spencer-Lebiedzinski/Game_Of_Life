@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, ChevronRight, ChevronLeft, Link2, Loader2, Unplug } from 'lucide-react';
+import { Check, ChevronRight, ChevronLeft, Link2, Loader2, Unplug, Trash2 } from 'lucide-react';
 import { GOAL_OPTIONS, CLARIFY_QUESTIONS, THEMES } from '../../data/goalData';
 import ProfileConnections from '../ProfileConnections';
 
@@ -16,6 +16,7 @@ export default function SettingsTab({
 }) {
   const [activeGoals, setActiveGoals] = useState(profile?.goals ?? []);
   const [goalDetails, setGoalDetails] = useState(profile?.goalDetails ?? {});
+  const [customGoals, setCustomGoals] = useState(profile?.customGoals ?? []);
   const [selectedTheme, setSelectedTheme] = useState(profile?.theme?.id ?? 'mint');
   const [canvasToken, setCanvasToken] = useState('');
   const [canvasSaving, setCanvasSaving] = useState(false);
@@ -104,6 +105,14 @@ export default function SettingsTab({
     } else {
       setPendingGoal(null);
     }
+  }
+
+  // ── Custom goal removal ──────────────────────────────────────────────────
+
+  function handleRemoveCustomGoal(goalId) {
+    const updated = customGoals.filter((g) => g.id !== goalId);
+    setCustomGoals(updated);
+    persist({ customGoals: updated, custom_goals: updated });
   }
 
   // ── Theme switching ──────────────────────────────────────────────────────
@@ -304,6 +313,32 @@ export default function SettingsTab({
           </div>
         )}
       </section>
+
+      {/* ── Custom Goals ── */}
+      {customGoals.length > 0 && (
+        <section className="bg-white rounded-2xl shadow-sm p-5 mb-4">
+          <h2 className="font-semibold text-dark mb-1">Custom Goals</h2>
+          <p className="text-xs text-gray-400 mb-4">AI-generated tabs from Planning. Remove to delete the tab.</p>
+          <div className="space-y-2">
+            {customGoals.map((goal) => (
+              <div key={goal.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                <span className="text-xl shrink-0">{goal.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-dark">{goal.label}</p>
+                  <p className="text-xs text-gray-400 truncate">{goal.summary}</p>
+                </div>
+                <button
+                  onClick={() => handleRemoveCustomGoal(goal.id)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                  title="Remove goal"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Theme ── */}
       <section className="bg-white rounded-2xl shadow-sm p-5 mb-4">

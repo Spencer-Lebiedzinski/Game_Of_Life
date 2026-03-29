@@ -11,6 +11,7 @@ import FinanceTab from './components/tabs/FinanceTab';
 import FloatingActionButton from './components/FloatingActionButton';
 import Onboarding from './components/Onboarding';
 import SettingsTab from './components/tabs/SettingsTab';
+import SobrietyTab from './components/tabs/SobrietyTab';
 import SleepTab from './components/tabs/SleepTab';
 import PlanningTab from './components/tabs/PlanningTab';
 import CustomGoalTab from './components/tabs/CustomGoalTab';
@@ -32,11 +33,23 @@ export default function App() {
   const [planRefreshKey, setPlanRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedDay, setSelectedDay] = useState(getTodayKey());
+  const [taskPoints, setTaskPoints] = useState(() => {
+    const saved = localStorage.getItem('taskPoints');
+    return saved ? parseInt(saved, 10) : 0;
+  });
   const [canvasConnected, setCanvasConnected] = useState(false);
   const [canvasDashboard, setCanvasDashboard] = useState(null);
   const [canvasLoading, setCanvasLoading] = useState(false);
   const [canvasMessage, setCanvasMessage] = useState('');
   const [canvasError, setCanvasError] = useState('');
+
+  const addPoints = (delta) => {
+    setTaskPoints((prev) => {
+      const next = Math.max(0, prev + delta);
+      localStorage.setItem('taskPoints', String(next));
+      return next;
+    });
+  };
 
   const userId = user?.sub || 'frontend-user';
 
@@ -51,7 +64,6 @@ export default function App() {
       { id: 'galaxy', primary: '#C084FC', secondary: '#818CF8', accent: '#E879F9', bg: '#0F172A', dark: true },
       { id: 'candy',  primary: '#F9A8D4', secondary: '#FDE68A', accent: '#6EE7B7', bg: '#FDF2F8' },
     ];
-    // Map backend goal values back to frontend IDs
     const BACKEND_TO_GOAL = {
       better_grades: 'school', lose_weight: 'fitness', reduce_stress: 'mindset',
       be_more_social: 'social', save_money: 'finance', sleep_better: 'sleep',
@@ -83,21 +95,17 @@ export default function App() {
 
   useEffect(() => {
     if (!userId || userId === 'frontend-user') return;
-
     fetch('http://localhost:8000/api/canvas/status', {
       headers: { 'X-User-Id': userId },
     })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         setCanvasConnected(Boolean(data?.connected));
-        if (!data?.connected) {
-          setCanvasDashboard(null);
-        }
+        if (!data?.connected) setCanvasDashboard(null);
       })
       .catch(() => {});
   }, [userId]);
 
-  // Fetch live stats whenever the user is authenticated
   useEffect(() => {
     if (!userId || userId === 'frontend-user') return;
     fetch(`http://localhost:8000/api/stats/${userId}`)
@@ -118,6 +126,7 @@ export default function App() {
     setProfile(data);
     applyTheme(data.theme);
     setPlanRefreshKey((current) => current + 1);
+    if (data.sound) localStorage.setItem('soundPref', data.sound);
   };
 
   const handleProfileUpdate = (updatedProfile) => {
@@ -137,23 +146,15 @@ export default function App() {
 
   const refreshCanvasDashboard = async ({ showLoadingMessage = true } = {}) => {
     if (!userId || userId === 'frontend-user') return null;
-
     setCanvasLoading(true);
     setCanvasError('');
-    if (showLoadingMessage) {
-      setCanvasMessage('Refreshing your class data. This may take a while.');
-    }
-
+    if (showLoadingMessage) setCanvasMessage('Refreshing your class data. This may take a while.');
     try {
       const response = await fetch('http://localhost:8000/api/canvas/dashboard', {
         headers: { 'X-User-Id': userId },
       });
-
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data?.detail || 'Could not refresh Canvas data.');
-      }
-
+      if (!response.ok) throw new Error(data?.detail || 'Could not refresh Canvas data.');
       setCanvasDashboard(data);
       setCanvasConnected(true);
       setCanvasMessage(`Last refreshed at ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`);
@@ -190,7 +191,6 @@ export default function App() {
     setCanvasMessage('');
   };
 
-  // Called by any tab after awarding XP so the header updates live
   const refreshStats = () => {
     if (!userId || userId === 'frontend-user') return;
     fetch(`http://localhost:8000/api/stats/${userId}`)
@@ -319,6 +319,8 @@ export default function App() {
             onCanvasDisconnected={handleCanvasDisconnected}
           />
         );
+      case 'sobriety':
+        return <SobrietyTab theme={profile.theme} userName={profile.name} />;
       case 'planning':
         return <PlanningTab profile={profile} userId={userId} onGoalCreated={handleGoalCreated} />;
       default: {
@@ -338,6 +340,7 @@ export default function App() {
         theme={profile.theme}
         goals={profile.goals}
         userStats={userStats}
+        taskPoints={taskPoints}
         profile={profile}
       />
       <main className="pb-24">{renderContent()}</main>

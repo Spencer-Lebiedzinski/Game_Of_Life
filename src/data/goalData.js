@@ -1,12 +1,13 @@
 // Shared goal config used by both Onboarding and Settings
 
 export const GOAL_OPTIONS = [
-  { id: 'school',  label: 'Crush School',  shortLabel: 'School',  icon: '📚', desc: 'Assignments, exams & study goals' },
-  { id: 'fitness', label: 'Get Fit',        shortLabel: 'Fitness', icon: '💪', desc: 'Workouts, steps & health habits' },
-  { id: 'mindset', label: 'Build Mindset',  shortLabel: 'Mindset', icon: '🧠', desc: 'Journaling, mood & gratitude' },
-  { id: 'social',  label: 'Grow Socially',  shortLabel: 'Social',  icon: '🤝', desc: 'Friendships & connections' },
-  { id: 'finance', label: 'Manage Money',   shortLabel: 'Finance', icon: '💰', desc: 'Budget, spending & savings' },
-  { id: 'sleep',   label: 'Sleep Better',   shortLabel: 'Sleep',   icon: '😴', desc: 'Track & improve sleep quality' },
+  { id: 'school',   label: 'Crush School',  shortLabel: 'School',   icon: '📚', desc: 'Assignments, exams & study goals' },
+  { id: 'fitness',  label: 'Get Fit',        shortLabel: 'Fitness',  icon: '💪', desc: 'Workouts, steps & health habits' },
+  { id: 'mindset',  label: 'Build Mindset',  shortLabel: 'Mindset',  icon: '🧠', desc: 'Journaling, mood & gratitude' },
+  { id: 'social',   label: 'Grow Socially',  shortLabel: 'Social',   icon: '🤝', desc: 'Friendships & connections' },
+  { id: 'finance',  label: 'Manage Money',   shortLabel: 'Finance',  icon: '💰', desc: 'Budget, spending & savings' },
+  { id: 'sleep',    label: 'Sleep Better',   shortLabel: 'Sleep',    icon: '😴', desc: 'Track & improve sleep quality' },
+  { id: 'sobriety', label: 'Stay Sober',     shortLabel: 'Sobriety', icon: '🛡️', desc: 'Beat addiction & track clean days' },
 ];
 
 export const CLARIFY_QUESTIONS = {
@@ -197,5 +198,5 @@ export const THEMES = [
 
 export const GOAL_TO_BACKEND = {
   school: 'better_grades', fitness: 'lose_weight', mindset: 'reduce_stress',
-  social: 'be_more_social', finance: 'save_money', sleep: 'sleep_better',
+  social: 'be_more_social', finance: 'save_money', sleep: 'sleep_better', sobriety: 'stay_sober',
 };
