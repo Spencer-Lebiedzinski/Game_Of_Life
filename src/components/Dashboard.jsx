@@ -1,3 +1,4 @@
+import { RefreshCw } from 'lucide-react';
 import WeeklyCalendar from './WeeklyCalendar';
 import TaskList from './TaskList';
 import LifeScore from './LifeScore';
@@ -6,7 +7,33 @@ import StudyMode from './StudyMode';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-export default function Dashboard({ tasks, setTasks, selectedDay, setSelectedDay, userName, theme, userStats }) {
+function formatDueDate(value) {
+  if (!value) return 'No due date';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'No due date';
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+export default function Dashboard({
+  tasks,
+  setTasks,
+  selectedDay,
+  setSelectedDay,
+  userName,
+  theme,
+  userStats,
+  canvasConnected,
+  canvasDashboard,
+  canvasLoading,
+  canvasMessage,
+  canvasError,
+  onRefreshCanvas,
+}) {
   const today = new Date();
   const dayOfWeek = today.getDay();
   const todayName = DAYS[dayOfWeek === 0 ? 6 : dayOfWeek - 1];
@@ -24,6 +51,7 @@ export default function Dashboard({ tasks, setTasks, selectedDay, setSelectedDay
   const dayTasks = tasks[selectedDay] || [];
   const completedCount = dayTasks.filter((t) => t.done).length;
   const todayTasks = tasks[todayName] || [];
+  const courses = canvasDashboard?.courses ?? [];
 
   const handleToggle = (taskId) => {
     setTasks((prev) => ({
@@ -99,6 +127,106 @@ export default function Dashboard({ tasks, setTasks, selectedDay, setSelectedDay
 
           {/* Study Mode */}
           <StudyMode theme={theme} />
+
+          <div className="bg-white rounded-2xl shadow-sm p-5">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <h2 className="font-semibold text-dark">Classes</h2>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {canvasConnected
+                    ? 'Your Canvas classes stay put until you refresh them.'
+                    : 'Connect your Canvas token in Settings to show live classes here.'}
+                </p>
+              </div>
+              <button
+                onClick={() => onRefreshCanvas?.()}
+                disabled={!canvasConnected || canvasLoading}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-blue-50 text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw size={14} className={canvasLoading ? 'animate-spin' : ''} />
+                Refresh
+              </button>
+            </div>
+
+            {(canvasMessage || canvasError) && (
+              <div className={`rounded-xl px-3 py-2 text-sm mb-4 ${canvasError ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800'}`}>
+                {canvasError || canvasMessage}
+              </div>
+            )}
+
+            {!canvasConnected ? (
+              <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">
+                No class data yet.
+              </div>
+            ) : courses.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">
+                Press refresh to load your latest classes.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {courses.map((item) => {
+                  const course = item.course ?? {};
+                  const grade = item.grade_summary ?? {};
+                  const counts = item.counts ?? {};
+                  const assignments = item.next_assignments ?? [];
+
+                  return (
+                    <div key={course.id ?? course.name} className="rounded-2xl border border-gray-100 p-4">
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div>
+                          <h3 className="font-semibold text-dark">{course.name || 'Untitled class'}</h3>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {course.course_code || 'Course code unavailable'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-dark">
+                            {grade.current_grade || grade.final_grade || 'No grade yet'}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {typeof grade.current_score === 'number'
+                              ? `${Math.round(grade.current_score)}% current score`
+                              : typeof grade.final_score === 'number'
+                              ? `${Math.round(grade.final_score)}% final score`
+                              : 'Score unavailable'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 flex-wrap mt-3">
+                        <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-red-50 text-red-700">
+                          {counts.missing_count ?? 0} missing
+                        </span>
+                        <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-700">
+                          {counts.late_count ?? 0} late
+                        </span>
+                        <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
+                          {counts.assignment_count ?? 0} assignments
+                        </span>
+                      </div>
+
+                      <div className="mt-4 space-y-2">
+                        {assignments.length === 0 ? (
+                          <p className="text-sm text-gray-400">No upcoming assignments found.</p>
+                        ) : (
+                          assignments.map((assignment) => (
+                            <div key={assignment.id} className="rounded-xl bg-gray-50 px-3 py-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-sm font-medium text-dark">{assignment.name || 'Untitled assignment'}</p>
+                                <span className={`text-xs font-medium ${assignment.submission?.missing ? 'text-red-600' : 'text-gray-500'}`}>
+                                  {formatDueDate(assignment.due_at)}
+                                </span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right: Life Score + Voice Coach */}
