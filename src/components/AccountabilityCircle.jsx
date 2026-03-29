@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Check, Send, Heart, Users, Target, Flame } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Check, Send, Heart, Users, Target, Flame, UserPlus, Copy, LogIn } from 'lucide-react';
 
 const circleMembers = [
   {
@@ -49,7 +49,11 @@ const statusColors = {
   offline: 'bg-gray-300',
 };
 
-export default function AccountabilityCircle({ theme, userName }) {
+function generateCode() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+export default function AccountabilityCircle({ theme, userName, onGroupChange }) {
   const [feed, setFeed] = useState(initialFeed);
   const [checkedIn, setCheckedIn] = useState(false);
   const [nudgeSent, setNudgeSent] = useState({});
@@ -58,6 +62,52 @@ export default function AccountabilityCircle({ theme, userName }) {
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [sharedGoal, setSharedGoal] = useState('');
   const [showGoalInput, setShowGoalInput] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
+  const [joinCodeInput, setJoinCodeInput] = useState('');
+  const [joinNameInput, setJoinNameInput] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  // Group state persisted in localStorage
+  const [groupCode, setGroupCode] = useState(() => localStorage.getItem('groupCode') || null);
+  const [groupMembers, setGroupMembers] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('groupMembers') || '[]'); } catch { return []; }
+  });
+
+  const saveGroup = (code, members) => {
+    setGroupCode(code);
+    setGroupMembers(members);
+    localStorage.setItem('groupCode', code);
+    localStorage.setItem('groupMembers', JSON.stringify(members));
+    if (onGroupChange) onGroupChange({ code, members });
+  };
+
+  const handleCreateGroup = () => {
+    const code = generateCode();
+    const me = { id: 'me', name: userName || 'You', avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${userName}`, streak: 0, taskPoints: 0, isMe: true };
+    saveGroup(code, [me]);
+    setShowInvite(true);
+  };
+
+  const handleJoinGroup = () => {
+    const code = joinCodeInput.trim().toUpperCase();
+    const name = joinNameInput.trim() || 'Friend';
+    if (!code) return;
+    const existing = JSON.parse(localStorage.getItem('groupMembers') || '[]');
+    const newMember = { id: Date.now(), name, avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${name}`, streak: 0, taskPoints: 0 };
+    const updated = [...existing.filter(m => !m.isMe), newMember, ...(existing.filter(m => m.isMe))];
+    saveGroup(code, updated);
+    setJoinCodeInput('');
+    setJoinNameInput('');
+    setFeed(f => [{ id: Date.now(), user: name, avatar: newMember.avatar, action: 'joined the circle! 🎉', time: 'Just now', likes: 0 }, ...f]);
+  };
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(groupCode).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const members = groupMembers.length > 0 ? groupMembers : circleMembers;
 
   const accent = theme?.accent || '#2DD4BF';
   const primary = theme?.primary || '#6EE7B7';
@@ -117,17 +167,77 @@ export default function AccountabilityCircle({ theme, userName }) {
           className="absolute -bottom-8 -right-8 w-32 h-32 rounded-full opacity-20 blur-2xl pointer-events-none"
           style={{ backgroundColor: accent }}
         />
-        <div className="flex items-center gap-2 mb-3">
-          <Users size={18} style={{ color: accent }} />
-          <p className="font-bold text-sm">Accountability Circle</p>
-          <span
-            className="text-xs px-2 py-0.5 rounded-full font-semibold"
-            style={{ backgroundColor: accent + '30', color: accent }}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Users size={18} style={{ color: accent }} />
+            <p className="font-bold text-sm">Accountability Circle</p>
+            {groupCode && (
+              <span className="text-xs px-2 py-0.5 rounded-full font-mono font-bold" style={{ backgroundColor: accent + '30', color: accent }}>
+                #{groupCode}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => setShowInvite(!showInvite)}
+            className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
+            style={{ backgroundColor: accent + '20', color: accent }}
           >
-            BASE44
-          </span>
+            <UserPlus size={12} />
+            Invite
+          </button>
         </div>
         <p className="text-gray-400 text-xs mb-4">Private group — no feeds, just real support</p>
+
+        {/* Invite / Join panel */}
+        {showInvite && (
+          <div className="mb-4 space-y-3">
+            {!groupCode ? (
+              <button
+                onClick={handleCreateGroup}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold text-white"
+                style={{ background: `linear-gradient(135deg, ${primary}, ${accent})` }}
+              >
+                🎉 Create a Circle & Get Invite Code
+              </button>
+            ) : (
+              <div className="bg-white/10 rounded-xl p-3">
+                <p className="text-xs text-gray-400 mb-2">Share this code with friends:</p>
+                <div className="flex items-center gap-2">
+                  <span className="flex-1 font-mono font-bold text-lg tracking-widest" style={{ color: accent }}>
+                    {groupCode}
+                  </span>
+                  <button onClick={handleCopyCode} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 transition-colors">
+                    <Copy size={11} />
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="bg-white/10 rounded-xl p-3">
+              <p className="text-xs text-gray-400 mb-2">Join a friend's circle:</p>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  placeholder="Your name"
+                  value={joinNameInput}
+                  onChange={e => setJoinNameInput(e.target.value)}
+                  className="flex-1 bg-white/10 border border-white/20 rounded-lg px-2 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none"
+                />
+                <input
+                  type="text"
+                  placeholder="Circle code"
+                  value={joinCodeInput}
+                  onChange={e => setJoinCodeInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleJoinGroup()}
+                  className="w-24 bg-white/10 border border-white/20 rounded-lg px-2 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none font-mono uppercase"
+                />
+                <button onClick={handleJoinGroup} className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ backgroundColor: accent, color: '#111' }}>
+                  <LogIn size={12} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Check-in button */}
         {!checkedIn ? (
@@ -175,10 +285,10 @@ export default function AccountabilityCircle({ theme, userName }) {
       <div className="bg-white rounded-2xl shadow-sm p-5">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-dark text-sm">Your Circle</h3>
-          <span className="text-xs text-gray-400">{circleMembers.length} friends</span>
+          <span className="text-xs text-gray-400">{members.length} members</span>
         </div>
         <div className="space-y-3">
-          {circleMembers.map(member => (
+          {members.map(member => (
             <div key={member.id} className="flex items-center gap-3">
               {/* Avatar + status */}
               <div className="relative shrink-0">

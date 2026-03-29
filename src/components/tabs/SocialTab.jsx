@@ -26,6 +26,9 @@ export default function SocialTab({ theme, userName, profile, userId, userStats,
   const [view, setView] = useState('leaderboard');
   const [rankBy, setRankBy] = useState('xp');
   const [leaderboard, setLeaderboard] = useState([]);
+  const [groupMembers, setGroupMembers] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('groupMembers') || '[]'); } catch { return []; }
+  });
 
   useEffect(() => {
     fetch('http://localhost:8000/api/stats/leaderboard/all')
@@ -34,22 +37,29 @@ export default function SocialTab({ theme, userName, profile, userId, userStats,
       .catch(() => {});
   }, []);
 
+  const handleGroupChange = ({ members }) => setGroupMembers(members);
+
   const board = (() => {
+    const me = { user_id: userId, name: userName || 'You', xp: userStats?.xp ?? 0, level: userStats?.level ?? 1, streak: userStats?.streak ?? 0, badges: userStats?.badges ?? [], taskPoints };
+    if (groupMembers.length > 0) {
+      return groupMembers.map((m) =>
+        m.isMe
+          ? { ...m, user_id: userId, xp: userStats?.xp ?? 0, level: userStats?.level ?? 1, streak: userStats?.streak ?? 0, badges: userStats?.badges ?? [], taskPoints }
+          : { ...m, user_id: m.id?.toString() ?? m.name }
+      );
+    }
     if (!userId || !userStats) return leaderboard;
     const exists = leaderboard.some((e) => e.user_id === userId);
     const withPoints = leaderboard.map((e) =>
       e.user_id === userId ? { ...e, taskPoints } : e
     );
     if (exists) return withPoints;
-    return [
-      ...withPoints,
-      { user_id: userId, name: userName || 'You', xp: userStats.xp ?? 0, level: userStats.level ?? 1, streak: userStats.streak ?? 0, badges: userStats.badges ?? [], taskPoints },
-    ].sort((a, b) => b.xp - a.xp);
+    return [...withPoints, me].sort((a, b) => b.xp - a.xp);
   })();
 
-  const sorted = rankBy === 'points'
-    ? [...board].sort((a, b) => (b.taskPoints ?? 0) - (a.taskPoints ?? 0))
-    : board;
+  const sorted = [...board].sort((a, b) =>
+    rankBy === 'points' ? (b.taskPoints ?? 0) - (a.taskPoints ?? 0) : (b.xp ?? 0) - (a.xp ?? 0)
+  );
 
   return (
     <div className="p-4 max-w-7xl mx-auto">
@@ -89,6 +99,12 @@ export default function SocialTab({ theme, userName, profile, userId, userStats,
 
       {view === 'leaderboard' ? (
         <>
+          {groupMembers.length > 0 && (
+            <div className="mb-3 flex items-center gap-2 text-xs text-gray-500">
+              <span>👥</span>
+              <span>Showing your group ({groupMembers.length} member{groupMembers.length !== 1 ? 's' : ''})</span>
+            </div>
+          )}
           <div className="flex bg-gray-100 rounded-xl p-1 gap-1 mb-4 w-fit">
             {[{ id: 'xp', label: '⚡ XP' }, { id: 'points', label: '⭐ Task Points' }].map(opt => (
               <button key={opt.id} onClick={() => setRankBy(opt.id)}
@@ -176,7 +192,7 @@ export default function SocialTab({ theme, userName, profile, userId, userStats,
           </div>
         </>
       ) : (
-        <AccountabilityCircle theme={theme} userName={userName} />
+        <AccountabilityCircle theme={theme} userName={userName} onGroupChange={handleGroupChange} />
       )}
     </div>
   );

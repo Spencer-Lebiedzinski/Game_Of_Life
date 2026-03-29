@@ -1,15 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import WeeklyCalendar from './WeeklyCalendar';
 import TaskList from './TaskList';
 import LifeScore from './LifeScore';
 import VoiceCoach from './VoiceCoach';
 import StudyMode from './StudyMode';
-import { Star } from 'lucide-react';
+import { Star, Plus, X } from 'lucide-react';
+import { playComplete, playUncomplete, playEndOfDay } from '../utils/sounds';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-export default function Dashboard({ tasks, setTasks, selectedDay, setSelectedDay, userName, theme, userStats, taskPoints = 0, onPointsChange }) {
+export default function Dashboard({ tasks, setTasks, selectedDay, setSelectedDay, userName, theme, userStats, taskPoints = 0, onPointsChange, sound = 'chime' }) {
   const [pointsToast, setPointsToast] = useState(null);
+  const [addingTask, setAddingTask] = useState(false);
+  const [newTaskText, setNewTaskText] = useState('');
+  const addInputRef = useRef(null);
+  const endOfDayChecked = useRef(false);
   const today = new Date();
   const dayOfWeek = today.getDay();
   const todayName = DAYS[dayOfWeek === 0 ? 6 : dayOfWeek - 1];
@@ -36,14 +41,41 @@ export default function Dashboard({ tasks, setTasks, selectedDay, setSelectedDay
       const task = updated.find((t) => t.id === taskId);
       const delta = task.done ? 10 : -10;
       if (onPointsChange) onPointsChange(delta);
-      if (delta > 0) {
+      if (task.done) {
+        playComplete(sound);
         const toastId = Date.now();
         setPointsToast({ id: toastId, delta });
         setTimeout(() => setPointsToast((p) => (p?.id === toastId ? null : p)), 1500);
+      } else {
+        playUncomplete(sound);
       }
       return { ...prev, [selectedDay]: updated };
     });
   };
+
+  const handleAddTask = () => {
+    if (!newTaskText.trim()) { setAddingTask(false); return; }
+    const newTask = { id: Date.now(), title: newTaskText.trim(), category: 'school', time: '', done: false };
+    setTasks((prev) => ({ ...prev, [selectedDay]: [...(prev[selectedDay] || []), newTask] }));
+    setNewTaskText('');
+    setAddingTask(false);
+  };
+
+  // End-of-day reminder: check at 9pm if there are incomplete tasks for today
+  useEffect(() => {
+    const now = new Date();
+    const todayKey = DAYS[now.getDay() === 0 ? 6 : now.getDay() - 1];
+    if (endOfDayChecked.current) return;
+    const hour = now.getHours();
+    if (hour >= 21) {
+      const todayTasks = tasks[todayKey] || [];
+      const incomplete = todayTasks.filter((t) => !t.done).length;
+      if (incomplete > 0) {
+        playEndOfDay(sound, incomplete);
+        endOfDayChecked.current = true;
+      }
+    }
+  }, [tasks, sound]);
 
   const accent = theme?.accent || '#2DD4BF';
 
@@ -85,24 +117,49 @@ export default function Dashboard({ tasks, setTasks, selectedDay, setSelectedDay
               <h2 className="font-semibold text-dark">
                 {selectedDay === todayName ? "Today's Plan" : `${selectedDay}'s Plan`}
               </h2>
-              {dayTasks.length > 0 && (
-                <div className="flex items-center gap-1">
-                  <div className="h-2 bg-gray-100 rounded-full w-20 overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${(completedCount / dayTasks.length) * 100}%`,
-                        backgroundColor: accent,
-                      }}
-                    />
+              <div className="flex items-center gap-2">
+                {dayTasks.length > 0 && (
+                  <div className="flex items-center gap-1">
+                    <div className="h-2 bg-gray-100 rounded-full w-20 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${(completedCount / dayTasks.length) * 100}%`, backgroundColor: accent }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {Math.round((completedCount / dayTasks.length) * 100)}%
+                    </span>
                   </div>
-                  <span className="text-xs text-gray-500">
-                    {Math.round((completedCount / dayTasks.length) * 100)}%
-                  </span>
-                </div>
-              )}
+                )}
+                <button
+                  onClick={() => { setAddingTask(true); setTimeout(() => addInputRef.current?.focus(), 50); }}
+                  className="w-7 h-7 rounded-full flex items-center justify-center transition-colors hover:opacity-80"
+                  style={{ backgroundColor: accent }}
+                  title="Add task"
+                >
+                  <Plus size={16} className="text-white" />
+                </button>
+              </div>
             </div>
             <TaskList tasks={dayTasks} onToggle={handleToggle} />
+            {addingTask && (
+              <div className="mt-3 flex items-center gap-2">
+                <input
+                  ref={addInputRef}
+                  type="text"
+                  placeholder="Add a task..."
+                  value={newTaskText}
+                  onChange={(e) => setNewTaskText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddTask(); if (e.key === 'Escape') { setAddingTask(false); setNewTaskText(''); } }}
+                  className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-accent"
+                  style={{ '--tw-ring-color': accent }}
+                />
+                <button onClick={handleAddTask} className="px-3 py-2 rounded-xl text-white text-sm font-medium" style={{ backgroundColor: accent }}>Add</button>
+                <button onClick={() => { setAddingTask(false); setNewTaskText(''); }} className="p-2 rounded-xl text-gray-400 hover:bg-gray-100">
+                  <X size={14} />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Quick stats row */}

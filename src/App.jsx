@@ -94,6 +94,7 @@ export default function App() {
   const handleOnboardingComplete = (data) => {
     setProfile(data);
     applyTheme(data.theme);
+    if (data.sound) localStorage.setItem('soundPref', data.sound);
   };
 
   const handleProfileUpdate = (updatedProfile) => {
@@ -142,6 +143,7 @@ export default function App() {
             userStats={userStats}
             taskPoints={taskPoints}
             onPointsChange={addPoints}
+            sound={profile.sound || localStorage.getItem('soundPref') || 'chime'}
           />
         );
       case 'school':   return <SchoolTab userId={userId} theme={profile.theme} />;
